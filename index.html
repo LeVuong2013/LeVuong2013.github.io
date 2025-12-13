@@ -13,10 +13,10 @@
             overflow: hidden;
             background-color: #F4F7F2;
             font-family: 'Montserrat', sans-serif;
-            touch-action: none; /* Critical for mobile games to prevent body scroll */
+            touch-action: none;
             user-select: none;
             -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent; /* Remove blue tap highlight on Android */
+            -webkit-tap-highlight-color: transparent;
         }
 
         #game-container {
@@ -84,7 +84,7 @@
         .currency-display {
             font-size: 16px;
             font-weight: 700;
-            color: #E9C46A; /* Gold */
+            color: #E9C46A;
             margin-top: 5px;
             display: flex;
             align-items: center;
@@ -136,6 +136,50 @@
             transform: scale(0.9);
         }
 
+        /* QTE Overlay */
+        #qte-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        #qte-overlay.active {
+            opacity: 1;
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.6) 90%);
+        }
+        #qte-prompt {
+            font-size: 4rem;
+            color: #FFF;
+            font-weight: 900;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px #E76F51;
+            transform: scale(0.5);
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #qte-overlay.active #qte-prompt {
+            transform: scale(1.2);
+        }
+        .qte-bar-bg {
+            width: 300px;
+            height: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        #qte-timer-fill {
+            height: 100%;
+            width: 100%;
+            background: #E76F51;
+            transform-origin: left;
+        }
+
         /* Screens */
         .screen {
             position: absolute;
@@ -153,11 +197,9 @@
             transition: opacity 0.4s, transform 0.4s;
             z-index: 10;
             box-sizing: border-box;
-            
-            /* SCROLLABLE MAIN MENU SETUP */
             overflow-y: auto; 
-            touch-action: pan-y; /* Fixes mobile scrolling */
-            justify-content: flex-start; /* Start from top to allow scrolling */
+            touch-action: pan-y;
+            justify-content: flex-start;
             padding-top: 40px;
             padding-bottom: 40px;
             -webkit-overflow-scrolling: touch;
@@ -170,11 +212,10 @@
             z-index: -1;
         }
 
-        /* Custom Modal Style */
         .modal-overlay {
             background: rgba(0, 0, 0, 0.6);
             z-index: 100;
-            justify-content: center; /* Center modal */
+            justify-content: center;
             padding-top: 0;
         }
 
@@ -219,7 +260,7 @@
             gap: 15px;
             width: 100%;
             max-width: 320px;
-            margin-bottom: 40px; /* Space at bottom for scrolling */
+            margin-bottom: 40px;
         }
 
         .btn {
@@ -330,7 +371,7 @@
             background: rgba(244, 247, 242, 0.5);
             padding: 15px;
             border-radius: 10px;
-            cursor: pointer; /* Signal clickability */
+            cursor: pointer; 
         }
 
         .icon-circle {
@@ -459,15 +500,9 @@
             .shop-grid { grid-template-columns: 1fr; }
             .feature-grid { grid-template-columns: 1fr; gap: 10px; }
             .feature-item { flex-direction: row; gap: 15px; text-align: left; }
-            
-            /* Performance: Reduce blur on mobile */
             .screen { backdrop-filter: blur(5px); }
-            
-            /* Make buttons easier to tap */
             .btn { padding: 18px 30px; font-size: 1.2rem; }
             .btn-option { padding: 15px 20px; font-size: 1rem; }
-            
-            /* Move mute button up slightly to avoid bottom bezel gesture conflict */
             #mute-btn { bottom: 30px; right: 30px; width: 60px; height: 60px; }
         }
 
@@ -478,6 +513,14 @@
 <div id="game-container">
     <canvas id="gameCanvas"></canvas>
     <div id="damage-overlay"></div>
+    
+    <!-- QTE Overlay -->
+    <div id="qte-overlay">
+        <div id="qte-prompt">ACTION!</div>
+        <div class="qte-bar-bg">
+            <div id="qte-timer-fill"></div>
+        </div>
+    </div>
 
     <button id="mute-btn" onclick="toggleAudio()">🔊</button>
 
@@ -501,44 +544,32 @@
         </div>
     </div>
 
-    <!-- Start Screen (Main Menu) - NOW SCROLLABLE -->
+    <!-- Start Screen -->
     <div id="start-screen" class="screen">
         <div style="font-size: 60px; color: #2F6F6F; margin-bottom: 10px;">⚡</div>
-        
         <h1>AETHER</h1>
         <h2>Sustainable Comfort Run</h2>
-
-        <div class="stat-badge">
-            BEST: <span id="menu-highscore">0</span>m
-        </div>
-        
+        <div class="stat-badge">BEST: <span id="menu-highscore">0</span>m</div>
         <div class="currency-display" style="font-size: 1.2rem; margin-bottom: 20px;">
             <span id="menu-coins">0</span> Aether Coins
         </div>
-
         <div class="btn-group">
             <button class="btn" onclick="startGame()">Start Running</button>
             <button class="btn btn-secondary" onclick="cycleDifficulty()" id="diff-btn">Difficulty: Medium</button>
             <button class="btn btn-shop" onclick="openShop()">Aether Shop</button>
             <button class="btn btn-secondary" onclick="showScreen('product-screen')">Our Technology</button>
-            <button class="btn btn-secondary" onclick="showScreen('instructions-screen')">Instructions</button>
+            <button class="btn btn-secondary" onclick="showScreen('instructions-screen')">How to Play</button>
         </div>
-        
-        <!-- Extra content to demonstrate scroll if needed -->
-        <div style="opacity: 0.5; font-size: 0.8rem; margin-bottom: 20px;">
-            v2.5 - Mobile Fixes
-        </div>
+        <div style="opacity: 0.5; font-size: 0.8rem; margin-bottom: 20px;">v4.3 - Balanced Gameplay</div>
     </div>
 
     <!-- Product Page -->
     <div id="product-screen" class="screen hidden">
         <h2 style="margin-bottom: 5px; color: #E9C46A; font-size: 1rem; letter-spacing: 3px;">SUSTAINABLE PERFORMANCE</h2>
         <h1>AETHER TECH</h1>
-        
         <div class="info-panel">
             <h3>The Seaweed x Merino Fusion</h3>
             <p>We've engineered the ultimate sportswear fabric by blending <strong>nutrient-rich Seaweed</strong> with <strong>premium Merino Wool</strong>.</p>
-            
             <div class="feature-grid">
                 <div class="feature-item">
                     <div class="icon-circle" style="color:#2F6F6F">🌿</div>
@@ -553,15 +584,13 @@
                     <div><strong>Air-Woven</strong><br><span style="font-size:0.8em">3-Layer structure for max airflow.</span></div>
                 </div>
             </div>
-
             <h3 style="margin-top: 20px;">The 3-Layer Structure</h3>
             <ul class="info-list">
-                <li><strong>Inner Layer (Merino):</strong> Ultra-soft, antibacterial, and moisture-wicking. Keeps you dry and odorless even after intense runs.</li>
-                <li><strong>Middle Layer (Air Pockets):</strong> Micro-cavities trap air for insulation while allowing heat to escape, creating a personal micro-climate.</li>
-                <li><strong>Outer Layer (Wave Weave):</strong> A durable, wave-patterned shield that moves with your body and resists tearing.</li>
+                <li><strong>Inner Layer (Merino):</strong> Ultra-soft, antibacterial, and moisture-wicking.</li>
+                <li><strong>Middle Layer (Air Pockets):</strong> Micro-cavities trap air for insulation.</li>
+                <li><strong>Outer Layer (Wave Weave):</strong> A durable, wave-patterned shield.</li>
             </ul>
         </div>
-
         <button class="btn" style="max-width: 200px;" onclick="showScreen('start-screen')">Back to Menu</button>
     </div>
 
@@ -569,12 +598,9 @@
     <div id="quiz-screen" class="screen hidden" style="z-index: 50; justify-content: center;">
         <h2 style="color: #2F6F6F; margin-bottom: 10px;">AETHER TRIVIA</h2>
         <p>Answer correctly for <strong>50 Coins</strong> & a <strong>Powerup</strong>!</p>
-        
         <div class="info-panel" style="width: 100%; max-width: 500px;">
             <h3 id="quiz-question" style="margin-bottom: 20px;">Question goes here...</h3>
-            <div id="quiz-options" style="display: flex; flex-direction: column; gap: 10px;">
-                <!-- Options injected here -->
-            </div>
+            <div id="quiz-options" style="display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
     </div>
 
@@ -582,7 +608,6 @@
     <div id="reward-screen" class="screen hidden" style="z-index: 51; justify-content: center;">
         <h1 style="font-size: 2.5rem; color: #E9C46A;">CORRECT!</h1>
         <p>+50 Coins Added! Choose your buff:</p>
-        
         <div class="feature-grid" style="margin-top: 10px;">
             <div class="feature-item" onclick="applyBuff('MAGNET')">
                 <div class="icon-circle">🧲</div>
@@ -605,11 +630,7 @@
             <h2 style="margin:0;">Aether Wardrobe</h2>
             <div class="currency-display"><span id="shop-coins">0</span> 🪙</div>
         </div>
-        
-        <div id="shop-container" class="shop-grid">
-            <!-- Items injected by JS -->
-        </div>
-
+        <div id="shop-container" class="shop-grid"></div>
         <div class="btn-group" style="margin-top: 20px;">
             <button class="btn btn-secondary" onclick="showScreen('start-screen')">Back to Menu</button>
         </div>
@@ -617,8 +638,8 @@
 
     <!-- Instructions Page -->
     <div id="instructions-screen" class="screen hidden">
-        <h1>Controls</h1>
-        <div class="info-panel">
+        <h1>Field Guide</h1>
+        <div class="info-panel" style="max-height: 70vh; overflow-y: auto;">
             <div class="feature-grid" style="margin-bottom: 20px;">
                 <div class="feature-item">
                     <div class="icon-circle">👆</div>
@@ -629,10 +650,15 @@
                     <div><strong>Swipe / Down</strong><br>Dive</div>
                 </div>
             </div>
-            <p><strong>Goal:</strong> Run as far as possible while maintaining Comfort (Energy).</p>
-            <p><strong>Hazards:</strong> Dodge Rocks, Missiles, and the scorching Sun.</p>
-            <p><strong>Day/Night:</strong> The world changes around you. Visibility drops at night!</p>
-            <p><strong>Trivia:</strong> Every 700m, answer a question for buffs!</p>
+            <h3>Hazards</h3>
+            <ul class="info-list">
+                <li><strong>Rock:</strong> Standard ground obstacle. Jump over it.</li>
+                <li><strong>Flying Rock:</strong> Floats in the air. Dive under it.</li>
+                <li><strong>Missile (DANGER):</strong> 50% chance for Quick Action! Else dive to dodge.</li>
+                <li><strong>Plasma Wave (DANGER):</strong> 50% chance for Quick Action! Else jump to clear.</li>
+                <li><strong>Lava Plume (DANGER):</strong> Erupts from lava. Jump to avoid.</li>
+            </ul>
+            <p><strong>One-Way Platforms:</strong> You can jump UP through platforms. If stuck in lava, just jump!</p>
         </div>
         <button class="btn" style="max-width: 200px;" onclick="showScreen('start-screen')">Back</button>
     </div>
@@ -641,7 +667,6 @@
     <div id="game-over-screen" class="screen hidden" style="justify-content: center;">
         <h1 style="font-size: 3rem; color: #E76F51;">Finished</h1>
         <p id="game-over-msg">Limit Reached</p>
-        
         <div style="background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin: 20px 0; width: 100%; max-width: 300px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                 <span style="color: #888;">Distance</span>
@@ -656,7 +681,6 @@
                 <span style="font-weight: bold; color: #E9C46A;" id="coins-earned">+0 Coins</span>
             </div>
         </div>
-
         <div class="btn-group">
             <button class="btn" onclick="resetGame()">Run Again</button>
             <button class="btn btn-shop" onclick="openShop()">Spend Coins</button>
@@ -686,6 +710,7 @@
             this.ctx = null;
             this.isMuted = false;
             this.isPlaying = false;
+            this.musicPulse = 1.0; 
         }
 
         init() {
@@ -732,25 +757,43 @@
                 this.playTone(1800, 'sine', 0.2, 0.03, 0.05);
             } 
             else if (type === 'crash') {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                osc.start(now);
-                osc.stop(now + 0.3);
+                this.playTone(100, 'sawtooth', 0.3, 0.2);
             } 
             else if (type === 'powerup') {
                 this.playTone(523.25, 'sine', 0.2, 0.1, 0);   
                 this.playTone(659.25, 'sine', 0.2, 0.1, 0.1); 
                 this.playTone(783.99, 'sine', 0.4, 0.1, 0.2); 
             }
+            else if (type === 'mystery') {
+                this.playTone(400, 'square', 0.1, 0.1, 0);
+                this.playTone(600, 'square', 0.1, 0.1, 0.1);
+            }
             else if (type === 'click') {
                 this.playTone(800, 'triangle', 0.05, 0.05);
+            }
+            else if (type === 'slowmo') {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 1.0);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 1.0);
+                osc.start(now); osc.stop(now + 1.0);
+            }
+            else if (type === 'whoosh') {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
             }
         }
 
@@ -768,16 +811,18 @@
 
         playLoop() {
             if (!this.isPlaying) return;
-            // Ethereal Arpeggio
             let sequence = [262, 330, 392, 523, 392, 330, 294, 349];
             let tempo = 300;
+            if (timeScale < 0.5) tempo = 1200; 
+            
             let noteIndex = 0;
             
             const playNext = () => {
                 if (!this.isPlaying) return;
                 const freq = sequence[noteIndex % sequence.length];
-                this.playTone(freq / 2, 'triangle', 0.5, 0.02); // Soft bass
-                this.playTone(freq, 'sine', 0.4, 0.02); // Soft lead
+                this.playTone(freq / 2, 'triangle', 0.5, 0.02); 
+                this.playTone(freq, 'sine', 0.4, 0.02); 
+                if (noteIndex % 4 === 0) this.musicPulse = 1.2; 
                 noteIndex++;
                 this.bgmTimer = setTimeout(playNext, tempo);
             };
@@ -799,7 +844,6 @@
         audio.toggleMute();
     }
     
-    // Mobile Audio Unlock Helper
     let audioUnlocked = false;
     function unlockAudio() {
         if (audioUnlocked) return;
@@ -816,13 +860,11 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    // Define Color Palette
     const PALETTE = {
         danger: '#E76F51',
         sun: '#E9C46A'
     };
     
-    // --- SKINS DATA ---
     const SKINS = [
         { id: 'default', name: 'The Prototype', desc: 'Pure black. No Aether tech. Heavy.', cost: 0, color: '#111111', secondary: '#333333', scarf: '#444444', perk: 'none' },
         { id: 'teal', name: 'Breeze Veil', desc: 'Photosynthesis: Sun damage -50%.', cost: 100, color: '#9BB1D6', secondary: '#6E85B2', scarf: '#2F6F6F', perk: 'photosynthesis' },
@@ -832,7 +874,6 @@
         { id: 'green', name: 'Kelp Sprout', desc: 'Absorb: Seaweed = 2x Energy.', cost: 1200, color: '#C8D9B3', secondary: '#90A955', scarf: '#D8F3DC', perk: 'eco_boost' }
     ];
 
-    // --- QUIZ DATA ---
     const QUESTIONS = [
         { q: "What materials are in the Aether set?", opts: ["Cotton/Poly", "Seaweed/Merino", "Bamboo/Spandex", "Nylon/Lycra"], ans: 1 },
         { q: "Standard set includes?", opts: ["Jacket/Leggings", "T-shirt/Shorts", "Hoodie/Pants", "Two T-shirts"], ans: 1 },
@@ -844,12 +885,11 @@
         { q: "Who is the set for?", opts: ["Men", "Women", "Kids", "Unisex"], ans: 3 }
     ];
 
-    // --- DIFFICULTY DATA ---
     const DIFFICULTIES = {
-        EASY: { label: "Easy", speed: 6.0, progression: 200, drain: 0.5 }, 
-        MEDIUM: { label: "Medium", speed: 8.0, progression: 120, drain: 1.0 }, 
-        HARD: { label: "Hard", speed: 10.0, progression: 80, drain: 1.2 },
-        FLOW: { label: "Flow", speed: 13.0, progression: 50, drain: 1.5 }
+        EASY: { label: "Easy", speed: 5.0, progression: 300, drain: 0.5 }, 
+        MEDIUM: { label: "Medium", speed: 7.0, progression: 200, drain: 1.0 }, 
+        HARD: { label: "Hard", speed: 9.0, progression: 150, drain: 1.2 },
+        FLOW: { label: "Flow", speed: 12.0, progression: 100, drain: 1.5 }
     };
     const DIFF_KEYS = ['EASY', 'MEDIUM', 'HARD', 'FLOW'];
     let selectedDifficulty = 'MEDIUM';
@@ -877,50 +917,334 @@
         return SKINS.find(s => s.id === playerData.equippedSkin) || SKINS[0];
     }
 
-    // --- GAME CONSTANTS ---
+    // --- GAME CONSTANTS & QTE VARS ---
     const GRAVITY = 0.65;          
-    const BASE_JUMP_FORCE = -16;   
+    const BASE_JUMP_FORCE = -17; 
     const DIVE_FORCE = 25;
     const MAX_SPEED = 30;    
     
-    // --- State Variables ---
     let gameState = 'MENU';
     let frameId;
     let score = 0;
-    let gameSpeed = 8.0; // will be overwritten by init
+    let gameSpeed = 8.0; 
+    let timeScale = 1.0; 
     let energy = 100;
     let maxEnergy = 100;
     let frameCount = 0;
-    let groundY;
-    let dayTime = 0; // 0 to 1 cycle
+    let groundY; 
+    let dayTime = 0; 
     let sessionCoins = 0;
     let jumpBuffer = 0; 
+    let coyoteTime = 0;
     let nextQuizThreshold = 700; 
     let buffs = { magnet: false, shieldRegen: false, efficiency: false };
-
-    // --- PARALLAX & ENVIRONMENT SYSTEM ---
+    let floatingTexts = []; 
+    let shakeTimer = 0;
     
-    // Day/Night Cycle Colors
-    const SKY_COLORS = {
-        dawn:  { top: '#FF9A9E', bot: '#FECFEF' }, // Pink/Orange
-        noon:  { top: '#A8DADC', bot: '#F4F7F2' }, // Blue/White
-        dusk:  { top: '#2F1C53', bot: '#F6D365' }, // Purple/Gold
-        night: { top: '#0F2027', bot: '#203A43' }  // Dark/Teal
-    };
+    // QTE Variables
+    let qteActive = false;
+    let qteTargetAction = null; 
+    let qteTimer = 0;
+    let qteMaxTime = 60; 
+    let qteTargetObstacle = null;
+    let invulnerableTimer = 0;
 
-    // Helper to interpolate colors
-    function lerpColor(a, b, t) {
-        let ah = parseInt(a.replace(/#/g, ''), 16),
-            ar = ah >> 16, ag = (ah >> 8) & 0xff, ab = ah & 0xff,
-            bh = parseInt(b.replace(/#/g, ''), 16),
-            br = bh >> 16, bg = (bh >> 8) & 0xff, bb = bh & 0xff,
-            rr = ar + t * (br - ar),
-            rg = ag + t * (bg - ag),
-            rb = ab + t * (bb - ab);
-        return '#' + ((1 << 24) + (Math.round(rr) << 16) + (Math.round(rg) << 8) + Math.round(rb)).toString(16).slice(1);
+    class FloatingText {
+        constructor(x, y, text, color) {
+            this.x = x; this.y = y; this.text = text; this.color = color;
+            this.life = 1.0; this.vy = -2;
+        }
+        update() {
+            this.y += this.vy * timeScale;
+            this.life -= 0.02 * timeScale;
+        }
+        draw(ctx) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, this.life);
+            ctx.fillStyle = this.color;
+            ctx.font = "900 20px Montserrat";
+            ctx.textAlign = "center";
+            ctx.strokeStyle = "rgba(0,0,0,0.5)";
+            ctx.lineWidth = 4;
+            ctx.strokeText(this.text, this.x, this.y);
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.restore();
+        }
     }
 
-    // Parallax Layer Class
+    function spawnFloatingText(x, y, text, color) {
+        floatingTexts.push(new FloatingText(x, y, text, color));
+    }
+
+    // --- DYNAMIC TERRAIN SYSTEM ---
+    class TerrainManager {
+        constructor() {
+            this.segments = [];
+            this.segmentLength = 200;
+            this.platforms = [];
+            this.segmentsSinceLava = 10; // Init high to allow first lava
+        }
+
+        reset() {
+            this.segments = [];
+            this.platforms = [];
+            this.segmentsSinceLava = 10;
+            for(let i = 0; i < 10; i++) {
+                this.addSegment(i * this.segmentLength, groundY, 'NORMAL');
+            }
+        }
+
+        generateValidNextSegment(lastSeg) {
+             let nextX = lastSeg.x + lastSeg.width;
+             let nextY = lastSeg.y;
+             let nextType = 'NORMAL';
+
+             // Lava Logic: Requires score > 2500, chance, AND at least 3 normal segments since last lava
+             if (score > 2500 && this.segmentsSinceLava >= 3 && Math.random() < 0.25) {
+                 nextType = 'LAVA';
+                 this.segmentsSinceLava = 0;
+             } else {
+                 this.segmentsSinceLava++;
+                 if (Math.random() < 0.5) {
+                     let diff = (Math.random() * 20 + 5); 
+                     if (Math.random() > 0.5) nextY -= diff; 
+                     else nextY += diff; 
+                 }
+                 if (nextY > canvas.height - 50) nextY = canvas.height - 50;
+                 if (nextY < canvas.height - 300) nextY = canvas.height - 300;
+             }
+             return { x: nextX, y: nextY, type: nextType };
+        }
+
+        addSegment(x, y, type) {
+            if (this.segments.length > 0 && x === undefined) {
+                 const last = this.segments[this.segments.length-1];
+                 const next = this.generateValidNextSegment(last);
+                 x = next.x; y = next.y; type = next.type;
+            }
+
+            let grad;
+            let decorations = [];
+
+            if (type === 'NORMAL') {
+                grad = ctx.createLinearGradient(0, y, 0, y + 400);
+                grad.addColorStop(0, '#E6EBE0');
+                grad.addColorStop(0.1, '#D0D8D9');
+                grad.addColorStop(1, '#AAB7B8');
+
+                // Generate texture details for this segment
+                const numDetails = Math.floor(Math.random() * 3) + 3;
+                for (let k = 0; k < numDetails; k++) {
+                    decorations.push({
+                        x: Math.random() * this.segmentLength,
+                        y: Math.random() * 200 + 20, // Keep below surface
+                        size: Math.random() * 6 + 2,
+                        shape: Math.random() > 0.5 ? 'circle' : 'rect',
+                        color: Math.random() > 0.5 ? 'rgba(47, 111, 111, 0.08)' : 'rgba(255, 255, 255, 0.3)'
+                    });
+                }
+
+            } else if (type === 'LAVA') {
+                grad = ctx.createLinearGradient(0, y, 0, y + 50);
+                grad.addColorStop(0, '#FF4500'); 
+                grad.addColorStop(1, '#8B0000');
+            }
+
+            this.segments.push({
+                x: x, y: y, width: this.segmentLength, type: type, gradient: grad, decorations: decorations
+            });
+
+            let prevY = (this.segments.length > 1) ? this.segments[this.segments.length-2].y : y;
+
+            if (type === 'LAVA') {
+                let platY = prevY - 50 - Math.random() * 50;
+                this.addPlatform(x + 20, platY);
+                this.addPlatform(x + 130, platY - (Math.random() * 40 - 20));
+                
+                if (Math.random() < 0.5) {
+                    obstacles.push(new Obstacle('LAVA_PLUME', x + 100, canvas.height));
+                }
+            } 
+            else if (Math.random() < 0.3) {
+                 const upward_slope = prevY - y; 
+                 if (upward_slope <= 10) { 
+                     let platY = y - 90 - Math.random() * 60;
+                     this.addPlatform(x + 50, platY);
+                 }
+            }
+        }
+
+        addPlatform(x, y) {
+            let widthType = Math.random();
+            let w = 150; 
+            if (widthType < 0.3) w = 80 + Math.random() * 30; 
+            else if (widthType < 0.7) w = 140 + Math.random() * 40; 
+            else w = 220 + Math.random() * 60; 
+            this.platforms.push(new Platform(x, y, w));
+        }
+
+        update() {
+            let speed = gameSpeed * timeScale;
+            for (let i = this.segments.length - 1; i >= 0; i--) {
+                this.segments[i].x -= speed;
+            }
+             for (let i = this.platforms.length - 1; i >= 0; i--) {
+                this.platforms[i].x -= speed;
+            }
+
+            if (this.segments[0].x + this.segments[0].width < -100) this.segments.shift();
+            this.platforms = this.platforms.filter(p => p.x + p.width > -100);
+
+            let lastSeg = this.segments[this.segments.length - 1];
+            if (lastSeg.x + lastSeg.width < canvas.width + 200) {
+                const next = this.generateValidNextSegment(lastSeg);
+                this.addSegment(next.x, next.y, next.type);
+            }
+        }
+
+        draw(ctx) {
+            for(let s of this.segments) {
+                if (s.type === 'NORMAL') {
+                    // Base Fill
+                    ctx.fillStyle = s.gradient;
+                    ctx.fillRect(s.x, s.y, s.width + 2, canvas.height - s.y);
+                    
+                    // Internal Texture
+                    for (let d of s.decorations) {
+                        ctx.fillStyle = d.color;
+                        if (d.shape === 'circle') {
+                            ctx.beginPath();
+                            ctx.arc(s.x + d.x, s.y + d.y, d.size, 0, Math.PI*2);
+                            ctx.fill();
+                        } else {
+                            ctx.fillRect(s.x + d.x, s.y + d.y, d.size * 1.5, d.size);
+                        }
+                    }
+
+                    // Surface Detail
+                    ctx.fillStyle = '#2F6F6F'; // Dark Teal Surface
+                    ctx.fillRect(s.x, s.y, s.width + 2, 8); 
+                    
+                    ctx.fillStyle = '#A8C686'; // Grass/Accent Line
+                    ctx.fillRect(s.x, s.y, s.width + 2, 3);
+
+                } else if (s.type === 'LAVA') {
+                    let wave = Math.sin(frameCount * 0.1 + s.x * 0.05) * 5;
+                    ctx.fillRect(s.x, s.y + 10 + wave, s.width, canvas.height);
+                    ctx.fillStyle = 'rgba(255, 200, 0, 0.5)';
+                    if (frameCount % 20 === 0) {
+                        ctx.beginPath();
+                        ctx.arc(s.x + Math.random() * s.width, s.y + Math.random() * 20, Math.random() * 5, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            }
+            for(let p of this.platforms) p.draw(ctx);
+        }
+
+        getSegmentAt(x) {
+            return this.segments.find(s => x >= s.x && x < s.x + s.width);
+        }
+    }
+
+    class Platform {
+        constructor(x, y, w) {
+            this.x = x; this.y = y; this.width = w; this.height = 20;
+        }
+        draw(ctx) {
+            ctx.strokeStyle = "#FFFFFF";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+            ctx.fillStyle = '#6E7F80';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillStyle = '#A8C686';
+            ctx.fillRect(this.x, this.y, this.width, 6);
+        }
+    }
+
+    class WeatherSystem {
+        constructor() {
+            this.type = 'CLEAR'; 
+            this.particles = [];
+            this.timer = 0;
+        }
+        
+        update() {
+            this.timer++;
+            if (this.timer > 1200 + Math.random() * 1200) {
+                this.changeWeather();
+                this.timer = 0;
+            }
+
+            if (this.type === 'RAIN' || this.type === 'STORM') {
+                let limit = this.type==='STORM'?4:2;
+                for(let i=0; i< limit; i++) {
+                    this.particles.push({
+                        x: Math.random() * canvas.width + canvas.width * 0.2,
+                        y: -10,
+                        vx: -3 - Math.random() * 2,
+                        vy: 10 + Math.random() * 5,
+                        type: 'rain',
+                        len: 10 + Math.random() * 10
+                    });
+                }
+            } else if (this.type === 'SNOW') {
+                if (frameCount % 3 === 0) {
+                    this.particles.push({
+                        x: Math.random() * canvas.width,
+                        y: -10,
+                        vx: -1 - Math.random(),
+                        vy: 1 + Math.random(),
+                        type: 'snow',
+                        size: 2 + Math.random() * 3
+                    });
+                }
+            }
+
+            for(let i = this.particles.length - 1; i >= 0; i--) {
+                let p = this.particles[i];
+                p.x += p.vx * timeScale;
+                p.y += p.vy * timeScale;
+                if (p.y > canvas.height) this.particles.splice(i, 1);
+            }
+        }
+
+        draw(ctx) {
+            ctx.save();
+            ctx.beginPath();
+            for(let p of this.particles) {
+                 if (p.type === 'rain') {
+                    ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 2, p.y + p.len);
+                } else if (p.type === 'snow') {
+                    ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                }
+            }
+            if (this.type === 'STORM' || this.type === 'RAIN') {
+                ctx.strokeStyle = this.type === 'STORM' ? '#8899AA' : '#AACCFF';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = '#FFF';
+                ctx.fill();
+            }
+            
+            if (this.type === 'STORM') {
+                ctx.fillStyle = 'rgba(20, 30, 50, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (Math.random() < 0.01) { 
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            ctx.restore();
+        }
+
+        changeWeather() {
+            const types = ['CLEAR', 'RAIN', 'SNOW', 'STORM'];
+            this.type = types[Math.floor(Math.random() * types.length)];
+        }
+    }
+
     class ParallaxLayer {
         constructor(speedFactor, yOffset, height, color, complexity) {
             this.speedFactor = speedFactor;
@@ -932,10 +1256,9 @@
         }
 
         generate(complexity) {
-            // Generate simple terrain points
             this.points = [];
             let x = 0;
-            this.points.push({x: 0, y: this.height}); // Start
+            this.points.push({x: 0, y: this.height}); 
             while (x < canvas.width + 200) {
                 let w = 50 + Math.random() * 100;
                 let h = (Math.random() - 0.5) * complexity; 
@@ -945,48 +1268,58 @@
         }
 
         update() {
-            // Scroll points
-            let speed = gameSpeed * this.speedFactor;
+            let speed = gameSpeed * this.speedFactor * timeScale;
             for(let p of this.points) p.x -= speed;
             
-            // Recycle
             if (this.points[0].x < -150) {
                 this.points.shift();
                 let lastP = this.points[this.points.length-1];
                 let w = 50 + Math.random() * 100;
-                // Keep y somewhat consistent
                 let baseH = this.height;
                 let h = (Math.random() - 0.5) * 40;
                 this.points.push({x: lastP.x + w, y: baseH + h});
             }
         }
 
-        draw(ctx, cycleT) {
-            // Determine color based on time? For now fixed relative to ground
+        draw(ctx) {
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.moveTo(0, canvas.height);
             for(let p of this.points) {
-                ctx.lineTo(p.x, groundY - p.y);
+                let refY = canvas.height - 50; 
+                ctx.lineTo(p.x, refY - p.y);
             }
-            ctx.lineTo(canvas.width + 100, groundY - this.points[this.points.length-1].y);
             ctx.lineTo(canvas.width + 100, canvas.height);
             ctx.lineTo(0, canvas.height);
             ctx.fill();
         }
     }
+    
+    const SKY_COLORS = {
+        dawn:  { top: '#FF9A9E', bot: '#FECFEF' }, 
+        noon:  { top: '#A8DADC', bot: '#F4F7F2' }, 
+        dusk:  { top: '#2F1C53', bot: '#F6D365' }, 
+        night: { top: '#0F2027', bot: '#203A43' }  
+    };
+    function lerpColor(a, b, t) {
+        let ah = parseInt(a.replace(/#/g, ''), 16),
+            ar = ah >> 16, ag = (ah >> 8) & 0xff, ab = ah & 0xff,
+            bh = parseInt(b.replace(/#/g, ''), 16),
+            br = bh >> 16, bg = (bh >> 8) & 0xff, bb = bh & 0xff,
+            rr = ar + t * (br - ar),
+            rg = ag + t * (bg - ag),
+            rb = ab + t * (bb - ab);
+        return '#' + ((1 << 24) + (Math.round(rr) << 16) + (Math.round(rg) << 8) + Math.round(rb)).toString(16).slice(1);
+    }
 
     let bgLayers = [];
-
-    // --- Responsive ---
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         groundY = canvas.height - (canvas.height * 0.15); 
-        // Re-gen layers on resize
         bgLayers = [
-            new ParallaxLayer(0.1, 100, 150, "rgba(47, 111, 111, 0.3)", 50), // Distant Mountains
-            new ParallaxLayer(0.3, 50, 80, "rgba(47, 111, 111, 0.5)", 30)   // Mid Hills
+            new ParallaxLayer(0.1, 100, 150, "rgba(47, 111, 111, 0.3)", 50), 
+            new ParallaxLayer(0.3, 50, 80, "rgba(47, 111, 111, 0.5)", 30)   
         ];
     }
     window.addEventListener('resize', resize);
@@ -1010,74 +1343,108 @@
             this.jumpMod = this.skin.perk === 'lightweight' ? 1.2 : 1.0;
             this.gravityMod = this.skin.perk === 'lightweight' ? 0.85 : 1.0;
             
-            if (this.skin.perk === 'shield_start') {
-                this.shieldCount = 1;
-                this.maxShields = 2; 
-            }
-            if (this.skin.perk === 'vitality') {
-                maxEnergy = 130;
-                energy = 130;
-            } else {
-                maxEnergy = 100;
-                energy = 100; 
-            }
+            if (this.skin.perk === 'shield_start') { this.shieldCount = 1; this.maxShields = 2; }
+            if (this.skin.perk === 'vitality') { maxEnergy = 130; energy = 130; } 
+            else { maxEnergy = 100; energy = 100; }
+            
             for(let i=0; i<10; i++) this.scarfPoints.push({x: this.x, y: this.y});
         }
 
         update() {
+            // Buffer Jump
             if (jumpBuffer > 0) {
                 jumpBuffer--;
-                if (!this.isJumping) {
+                if (!this.isJumping || coyoteTime > 0) {
                     this.jump();
                     jumpBuffer = 0;
                 }
             }
 
-            this.y += this.vy;
+            let prevY = this.y; 
+            // Apply slow motion to physics
+            this.y += this.vy * timeScale;
             
-            if (this.y + this.height >= groundY) {
-                this.y = groundY - this.height;
-                this.vy = 0;
-                this.isJumping = false;
-            } else {
-                this.vy += GRAVITY * this.gravityMod;
-                this.isJumping = true;
+            let segment = terrain.getSegmentAt(this.x + this.width/2);
+            let groundLevel = segment ? segment.y : canvas.height + 100; 
+
+            if (coyoteTime > 0) coyoteTime--;
+
+            let onPlatform = false;
+
+            let playerBottom = this.y + this.height;
+            let prevBottom = prevY + this.height;
+
+            for (let p of terrain.platforms) {
+                if (this.x + this.width > p.x && this.x < p.x + p.width) {
+                    // FIX: Check collision slightly more forgiving to catch high speed falls
+                    // If moving down (positive vy), and we were reasonably close to the top last frame
+                    // Or if we clearly passed through it in one frame.
+                    if (this.vy >= 0) {
+                         if (playerBottom >= p.y && prevBottom <= p.y + 15) {
+                             this.y = p.y - this.height;
+                             this.vy = 0;
+                             this.isJumping = false;
+                             onPlatform = true;
+                             coyoteTime = 10;
+                         }
+                    }
+                }
             }
 
-            // Shield Regen Logic
+            if (!onPlatform) {
+                if (this.y + this.height >= groundLevel) {
+                    if (segment.type === 'LAVA') {
+                         this.y += 1 * timeScale; 
+                         energy -= 5 * timeScale; 
+                         createParticles(this.x, this.y + this.height, 2, '#FF0000');
+                    } else {
+                         this.y = groundLevel - this.height;
+                         this.vy = 0;
+                         this.isJumping = false;
+                         coyoteTime = 10; 
+                    }
+                } else {
+                    this.vy += (GRAVITY * this.gravityMod) * timeScale; // Gravity respects timeScale
+                    this.isJumping = true;
+                }
+            }
+
             if (buffs.shieldRegen && this.shieldCount < this.maxShields) {
                 this.shieldRegenTimer++;
-                // Reduced timer from 1800 (30s) to 600 (10s at 60fps)
                 if (this.shieldRegenTimer > 600) { 
                     this.shieldCount++;
                     this.shieldRegenTimer = 0;
                     createParticles(this.x, this.y, 10, '#FFF');
                     audio.playSFX('powerup');
+                    spawnFloatingText(this.x, this.y, "Shield Regened", "#FFF");
                 }
             }
 
-            // Scarf Physics
+            // Scarf (Simulated)
             let prevX = this.x + 10;
-            let prevY = this.y + 10;
+            prevY = this.y + 10; 
             this.scarfPoints.forEach((p, index) => {
                 let dx = p.x - prevX;
                 let dy = p.y - prevY;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                let speed = gameSpeed * 0.8; 
+                let speed = gameSpeed * 0.8 * timeScale; 
                 if (dist > 5) {
                     p.x -= (dx * 0.3) + speed; 
                     p.y -= dy * 0.3;
                 }
-                p.y += Math.sin(frameCount * 0.2 + index) * 2;
+                p.y += Math.sin(frameCount * 0.2 + index) * 2 * timeScale;
                 prevX = p.x;
                 prevY = p.y;
             });
+            
+            if (invulnerableTimer > 0) invulnerableTimer -= timeScale;
         }
 
         jump() {
-            if (!this.isJumping) {
+            if (!this.isJumping || coyoteTime > 0) {
                 this.vy = BASE_JUMP_FORCE * this.jumpMod;
                 this.isJumping = true;
+                coyoteTime = 0; 
                 createParticles(this.x + this.width/2, this.y + this.height, 5, '#FFF');
                 audio.playSFX('jump');
             } else {
@@ -1085,9 +1452,22 @@
             }
         }
         
-        cutJump() {
-            if (this.vy < -5) this.vy = this.vy * 0.4;
+        superJump() {
+            this.vy = BASE_JUMP_FORCE * 1.8; 
+            this.isJumping = true;
+            createParticles(this.x, this.y + this.height, 20, '#00FFFF');
+            audio.playSFX('whoosh');
+            invulnerableTimer = 60;
         }
+
+        superDive() {
+            this.vy = DIVE_FORCE * 1.5;
+            createParticles(this.x, this.y, 15, '#FF0000');
+            audio.playSFX('whoosh');
+            invulnerableTimer = 30;
+        }
+        
+        cutJump() { if (this.vy < -5) this.vy = this.vy * 0.4; }
 
         dive() {
             if (this.isJumping) {
@@ -1121,16 +1501,9 @@
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
                 ctx.lineWidth = 2;
                 ctx.stroke();
-                if (this.shieldCount > 1) {
-                    ctx.beginPath();
-                    ctx.arc(this.x + this.width/2, this.y + this.height/2, 48, 0, Math.PI*2);
-                    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                }
             }
 
-            // Legs/Body
+            // Body
             ctx.fillStyle = this.skin.secondary;
             if (this.isJumping) {
                  ctx.fillRect(this.x + 5, this.y + 40, 8, 15);
@@ -1139,11 +1512,11 @@
                  let stride = Math.sin(frameCount * 0.3) * 10;
                  ctx.beginPath();
                  ctx.moveTo(this.x + 15, this.y + 40);
-                 ctx.lineTo(this.x + 5 - stride, groundY);
+                 ctx.lineTo(this.x + 5 - stride, this.y + 50 + stride); 
                  ctx.stroke();
                  ctx.beginPath();
                  ctx.moveTo(this.x + 15, this.y + 40);
-                 ctx.lineTo(this.x + 25 + stride, groundY);
+                 ctx.lineTo(this.x + 25 + stride, this.y + 50 - stride);
                  ctx.strokeStyle = this.skin.secondary;
                  ctx.lineWidth = 8;
                  ctx.stroke();
@@ -1152,6 +1525,13 @@
             ctx.beginPath();
             ctx.roundRect(this.x, this.y + 10, this.width, 35, 5);
             ctx.fill();
+            
+            if (invulnerableTimer > 0) {
+                 ctx.strokeStyle = `rgba(255, 255, 255, ${Math.random()})`;
+                 ctx.lineWidth = 2;
+                 ctx.strokeRect(this.x - 2, this.y + 8, this.width + 4, 39);
+            }
+
             ctx.fillStyle = this.skin.secondary;
             ctx.beginPath();
             ctx.arc(this.x + 18, this.y + 5, 12, 0, Math.PI*2);
@@ -1160,155 +1540,195 @@
     }
 
     class Obstacle {
-        constructor(type) {
+        constructor(type, xOverride, yOverride) {
             this.type = type; 
             this.speedX = 0;
-            this.damage = 15; // Default rock damage
+            this.damage = 15; 
+            this.qteTriggered = false; 
             
+            let spawnY = terrain.segments[terrain.segments.length-1].y;
+
             if (type === 'MISSILE') {
                 this.width = 60; this.height = 30;
-                this.y = Math.random() > 0.5 ? groundY - 130 : groundY - 40;
+                this.y = Math.random() > 0.5 ? spawnY - 130 : spawnY - 40;
                 this.speedX = 6 + Math.random() * 3; 
                 this.damage = 25; 
             } else if (type === 'SUN') {
                 this.width = 40; this.height = 40;
-                this.y = groundY - 80 - (Math.random() * 100); 
+                this.y = spawnY - 80 - (Math.random() * 100); 
                 this.damage = 30; 
-            } else if (type === 'DRONE') { // NEW ENEMY 1: SONIC DRONE (750m)
+            } else if (type === 'DRONE') { 
                 this.width = 25; this.height = 15;
-                this.y = groundY - 150 - (Math.random() * 80); // Stays high
-                this.speedX = 10 + Math.random() * 5; // Very fast
-                this.damage = 40; // High damage
-            } else if (type === 'WAVE') { // NEW ENEMY 2: PLASMA WAVE (1800m)
+                this.y = spawnY - 150 - (Math.random() * 80); 
+                this.speedX = 10 + Math.random() * 5; 
+                this.damage = 40; 
+            } else if (type === 'WAVE') { 
                 this.width = canvas.width / 4; this.height = 60;
                 this.x = canvas.width;
-                this.y = groundY - this.height + 5; // Sweeps low
-                this.speedX = -5; // Moves slower than runner speed, so it feels like a wall closing in
-                this.damage = 50; // Very high damage
-            } else { // ROCK or FLYING_ROCK default setup
+                this.y = spawnY - this.height + 5; 
+                this.speedX = -5; 
+                this.damage = 50; 
+            } else if (type === 'LAVA_PLUME') {
+                this.width = 40; this.height = 120;
+                this.x = xOverride;
+                this.y = yOverride; // Starts below screen
+                this.targetY = yOverride - 200; 
+                this.damage = 35;
+                this.speedX = 0;
+            } else { // ROCK or FLYING_ROCK
                 this.width = 40; this.height = 50;
-                this.y = groundY - this.height - 5; 
+                this.y = spawnY - this.height - 5; 
                 this.damage = 15;
             }
             
-            this.x = canvas.width + Math.random() * 200; 
+            if (!xOverride) this.x = canvas.width + Math.random() * 100;
+            
             this.isMoving = Math.random() < 0.4; 
             this.angle = 0; 
             this.vy = type === 'FLYING_ROCK' ? -(14 + Math.random()*4) : 0;
             
-            if (type === 'FLYING_ROCK') this.y = groundY - 20;
-            
-            this.initialY = this.y;
-            this.generateShape();
-        }
-        
-        generateShape() {
-             this.points = [];
-             let numPoints = 6;
-             for(let i=0; i<numPoints; i++) {
-                 let angle = (i/numPoints) * Math.PI * 2;
-                 let r = 20 + Math.random() * 10;
-                 this.points.push({x: Math.cos(angle) * r, y: Math.sin(angle) * r});
-             }
+            if (type === 'FLYING_ROCK') {
+                this.y = spawnY - 110; 
+                this.initialY = this.y;
+            } else {
+                this.initialY = this.y;
+            }
+            this.points = [];
+            let numPoints = 6;
+            for(let i=0; i<numPoints; i++) {
+                let angle = (i/numPoints) * Math.PI * 2;
+                let r = 20 + Math.random() * 10;
+                this.points.push({x: Math.cos(angle) * r, y: Math.sin(angle) * r});
+            }
         }
 
         update() {
-            this.x -= (gameSpeed + this.speedX);
+            this.x -= (gameSpeed + this.speedX) * timeScale;
             
             if (this.type === 'FLYING_ROCK') {
-                this.y += this.vy;
-                this.vy += GRAVITY;
-                if (this.y + this.height > groundY - 5) { 
-                    this.y = groundY - this.height - 5;
-                    this.vy = 0;
-                    this.type = 'ROCK'; 
-                }
+                this.y = this.initialY + Math.sin(frameCount * 0.1) * 20;
             } else if (this.type === 'MISSILE') {
                 if (Math.random() < 0.05) this.vy = (Math.random() - 0.5) * 8; 
-                this.y += this.vy + Math.sin(this.x * 0.05) * 2;
-                if (this.y > groundY - 30) { this.y = groundY - 30; this.vy = -Math.abs(this.vy); }
-                if (this.y < groundY - 180) { this.y = groundY - 180; this.vy = Math.abs(this.vy); }
+                this.y += (this.vy + Math.sin(this.x * 0.05) * 2) * timeScale;
             } else if (this.type === 'SUN') {
-                // Moving Sun: Float up and down significantly
                 this.y = this.initialY + Math.sin(frameCount * 0.05) * 50;
+            } else if (this.type === 'LAVA_PLUME') {
+                if (this.x < canvas.width && this.y > this.targetY) {
+                    this.y -= 10 * timeScale; // Erupt up
+                }
             }
-            // WAVE is handled by the main x movement and needs no special update here
 
-            if (this.isMoving && this.type !== 'MISSILE' && this.type !== 'SUN' && this.type !== 'WAVE') {
-                this.x -= 2.5; 
-                this.angle -= 0.15;
+            if (this.isMoving && this.type !== 'MISSILE' && this.type !== 'SUN' && this.type !== 'WAVE' && this.type !== 'LAVA_PLUME') {
+                this.x -= 2.5 * timeScale; 
+                this.angle -= 0.15 * timeScale;
+            }
+
+            // QTE TRIGGER LOGIC
+            if (!this.qteTriggered && !qteActive) {
+                // Determine danger zone distance
+                let dist = this.x - player.x;
+                if (dist > 50 && dist < 200) {
+                    
+                    // Check if QTEs are still viable based on score
+                    // Base 720 frames (12s). Decrease 90 frames (1.5s) per 1000m.
+                    let reduction = Math.floor(score / 1000) * 90;
+                    let calculatedMaxTime = 720 - reduction;
+
+                    if (calculatedMaxTime >= 45) { // 0.75s threshold
+                        // 50% Chance
+                        const triggerChance = 0.5;
+                        if (this.type === 'MISSILE' || this.type === 'WAVE' || this.type === 'LAVA_PLUME') {
+                            if (Math.random() < triggerChance) {
+                                let action = 'JUMP'; // Default action
+
+                                // Smart Action Logic
+                                if (this.type === 'MISSILE') {
+                                    // Get approximate ground level relative to screen height
+                                    // High missile (requires ducking) is usually spawnY - 130
+                                    // Low missile (requires jumping) is usually spawnY - 40
+                                    // We can check if it's high up relative to the canvas
+                                    // If y is smaller (higher up) than canvas.height - 150, it's a high missile
+                                    if (this.y < canvas.height - 200) {
+                                        action = 'DIVE';
+                                    } else {
+                                        action = 'JUMP';
+                                    }
+                                } else if (this.type === 'WAVE') {
+                                    action = 'JUMP';
+                                } else if (this.type === 'LAVA_PLUME') {
+                                    action = 'JUMP';
+                                }
+
+                                triggerQTE(action, this, calculatedMaxTime);
+                            } else {
+                                this.qteTriggered = true; 
+                            }
+                        }
+                    } else {
+                        // QTEs disabled, mark processed
+                        this.qteTriggered = true;
+                    }
+                }
+            }
+
+            for (let p of terrain.platforms) {
+                if (this.x < p.x + p.width - 5 && this.x + this.width > p.x + 5 &&
+                    this.y < p.y + p.height - 5 && this.y + this.height > p.y + 5) {
+                    this.markedForDeletion = true;
+                }
             }
         }
 
         draw() {
             ctx.save();
             if (this.type === 'MISSILE') {
-                // HIGH CONTRAST: Silver/White Body
                 ctx.fillStyle = '#E0E0E0'; 
-                ctx.shadowColor = '#FF0000'; 
-                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 15;
                 ctx.beginPath();
                 ctx.moveTo(this.x + this.width, this.y); 
                 ctx.lineTo(this.x, this.y + this.height/2); 
                 ctx.lineTo(this.x + this.width, this.y + this.height); 
                 ctx.lineTo(this.x + this.width - 15, this.y + this.height/2); 
-                ctx.closePath();
-                ctx.fill();
-                
-                // Bright red glowing tail/stroke
-                ctx.strokeStyle = '#FF4444';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = '#FF4444'; ctx.lineWidth = 3; ctx.stroke();
             } else if (this.type === 'SUN') {
                  ctx.fillStyle = '#E9C46A';
-                 ctx.shadowColor = '#E9C46A'; ctx.shadowBlur = 20;
+                 ctx.shadowColor = '#FFA500'; ctx.shadowBlur = 25;
                  ctx.beginPath(); ctx.arc(this.x + this.width/2, this.y + this.height/2, 20, 0, Math.PI*2); ctx.fill();
                  ctx.shadowBlur = 0;
             } else if (this.type === 'DRONE') {
-                // Sonic Drone: Small, fast, high contrast neon green/cyan
                 ctx.fillStyle = '#10FFD0'; 
-                ctx.shadowColor = '#10FFD0'; 
-                ctx.shadowBlur = 15;
-                
+                ctx.shadowColor = '#10FFD0'; ctx.shadowBlur = 20;
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y + this.height / 2);
                 ctx.lineTo(this.x + this.width, this.y);
                 ctx.lineTo(this.x + this.width, this.y + this.height);
-                ctx.closePath();
-                ctx.fill();
-                ctx.shadowBlur = 0;
+                ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
             } else if (this.type === 'WAVE') {
-                // Plasma Wave: Large, glowing pink/purple sweep
-                ctx.fillStyle = 'rgba(255, 0, 255, 0.2)'; 
-                ctx.shadowColor = '#FF00FF';
-                ctx.shadowBlur = 25;
-                
-                // Draw a large arc for the wave shape
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.3)'; 
+                ctx.shadowColor = '#FF00FF'; ctx.shadowBlur = 30;
                 ctx.beginPath(); 
                 ctx.arc(this.x + this.width / 2, this.y + this.height, this.width, Math.PI, 2 * Math.PI);
                 ctx.fill();
-                
-                // Draw a central line for intensity
-                ctx.beginPath();
-                ctx.rect(this.x, this.y + this.height / 2, this.width, 10);
-                ctx.fillStyle = 'rgba(255, 0, 255, 0.4)';
-                ctx.fill();
+                ctx.beginPath(); ctx.rect(this.x, this.y + this.height / 2, this.width, 10);
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.6)'; ctx.fill(); ctx.shadowBlur = 0;
+            } else if (this.type === 'LAVA_PLUME') {
+                ctx.fillStyle = '#FF4500';
+                ctx.shadowColor = '#FF0000'; ctx.shadowBlur = 20;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
                 ctx.shadowBlur = 0;
+                // Bubbles
+                ctx.fillStyle = '#FFFF00';
+                if (frameCount % 5 === 0) ctx.fillRect(this.x + Math.random()*30, this.y + Math.random()*100, 5, 5);
             } else {
-                // ROCK (Default) - Increased visibility for nightime
                 ctx.translate(this.x + this.width/2, this.y + this.height/2);
                 if (this.isMoving) ctx.rotate(this.angle);
-                ctx.fillStyle = '#4A5A6A'; // Dark base color
+                ctx.fillStyle = '#4A5A6A'; 
                 ctx.beginPath();
                 ctx.moveTo(this.points[0].x, this.points[0].y);
                 for(let i=1; i<this.points.length; i++) ctx.lineTo(this.points[i].x, this.points[i].y);
-                ctx.closePath();
-                ctx.fill();
-                // Increased contrast stroke for visibility
-                ctx.strokeStyle = "rgba(255,255,255,0.9)"; // Brighter white/near white
-                ctx.lineWidth = 3; // Thicker line
-                ctx.stroke();
+                ctx.closePath(); ctx.fill();
+                ctx.strokeStyle = "#FFFFFF"; ctx.lineWidth = 4; ctx.stroke();
             }
             ctx.restore();
         }
@@ -1319,24 +1739,25 @@
             this.width = 30;
             this.height = 30;
             this.x = canvas.width;
-            this.y = groundY - 50 - (Math.random() * 150);
+            this.y = Math.random() * (canvas.height * 0.6) + 50; 
             
             const r = Math.random();
-            if (r < 0.7) this.type = 'SEAWEED';
-            else this.type = 'WOOL';
+            if (r < 0.4) this.type = 'SEAWEED';
+            else if (r < 0.6) this.type = 'WOOL';
+            else if (r < 0.9) this.type = 'COIN';
+            else this.type = 'MYSTERY';
         }
         update() {
-            this.x -= gameSpeed;
-            this.y += Math.sin(frameCount * 0.1) * 0.5;
+            this.x -= gameSpeed * timeScale;
+            this.y += Math.sin(frameCount * 0.1) * 0.5 * timeScale;
 
-            // Magnet Buff
             if (buffs.magnet) {
                 let dx = player.x - this.x;
                 let dy = player.y - this.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
                 if (dist < 250) {
-                    this.x += dx * 0.05;
-                    this.y += dy * 0.05;
+                    this.x += dx * 0.05 * timeScale;
+                    this.y += dy * 0.05 * timeScale;
                 }
             }
         }
@@ -1348,11 +1769,21 @@
                 ctx.beginPath(); ctx.moveTo(this.x+15, this.y+5);
                 ctx.quadraticCurveTo(this.x+5, this.y+15, this.x+15, this.y+25);
                 ctx.quadraticCurveTo(this.x+25, this.y+15, this.x+15, this.y+5); ctx.stroke();
-            } else {
+            } else if (this.type === 'WOOL') {
                 ctx.fillStyle = '#FFF';
                 ctx.shadowColor = '#FFF'; ctx.shadowBlur = 10;
                 ctx.beginPath(); ctx.arc(this.x + 15, this.y + 15, 12, 0, Math.PI*2); ctx.fill();
                 ctx.shadowBlur = 0;
+            } else if (this.type === 'COIN') {
+                ctx.fillStyle = '#FFD700'; 
+                ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.arc(this.x + 15, this.y + 15, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#DAA520'; ctx.font = '12px Arial'; ctx.textAlign = 'center'; ctx.fillText('$', this.x+15, this.y+19);
+            } else if (this.type === 'MYSTERY') {
+                ctx.fillStyle = '#9932CC'; 
+                ctx.strokeStyle = '#FFF'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.rect(this.x, this.y, 30, 30); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFF'; ctx.font = '16px Arial'; ctx.textAlign = 'center'; ctx.fillText('?', this.x+15, this.y+21);
             }
         }
     }
@@ -1362,7 +1793,7 @@
             this.x = x; this.y = y; this.size = size; this.color = color;
             this.vx = (Math.random() - 0.5) * 4; this.vy = (Math.random() - 0.5) * 4; this.life = 1.0;
         }
-        update() { this.x += this.vx; this.y += this.vy; this.life -= 0.05; }
+        update() { this.x += this.vx * timeScale; this.y += this.vy * timeScale; this.life -= 0.05 * timeScale; }
         draw() {
             ctx.globalAlpha = Math.max(0, this.life);
             ctx.fillStyle = this.color;
@@ -1380,7 +1811,7 @@
             this.alpha = 0.3 + Math.random() * 0.4;
         }
         update() {
-            this.x -= this.speed + (gameSpeed * 0.05);
+            this.x -= (this.speed + (gameSpeed * 0.05)) * timeScale;
             if (this.x + this.width < 0) this.x = canvas.width + 50;
         }
         draw() {
@@ -1395,26 +1826,37 @@
     let collectibles = [];
     let particles = [];
     let clouds = [];
+    let terrain;
+    let weather;
     
     // --- Logic ---
     function init() {
         resize();
         audio.init(); 
         
+        terrain = new TerrainManager();
+        terrain.reset();
+        weather = new WeatherSystem();
+
         player = new Player();
         obstacles = [];
         collectibles = [];
         particles = [];
+        floatingTexts = [];
         score = 0;
         sessionCoins = 0;
+        shakeTimer = 0;
         
-        // APPLY DIFFICULTY START SPEED
         gameSpeed = DIFFICULTIES[selectedDifficulty].speed;
         
         frameCount = 0;
-        dayTime = 0.3; // Start morning
+        dayTime = 0.3; 
         nextQuizThreshold = 700; 
         buffs = { magnet: false, shieldRegen: false, efficiency: false };
+        
+        // QTE Reset
+        qteActive = false;
+        timeScale = 1.0;
         
         clouds = [];
         for(let i=0; i<8; i++) clouds.push(new Cloud());
@@ -1424,7 +1866,6 @@
     }
 
     function createParticles(x, y, count, color) {
-        // Optimization: Reduce particles on mobile for performance
         if (window.innerWidth < 768) count = Math.ceil(count / 2);
         for(let i=0; i<count; i++) particles.push(new Particle(x, y, Math.random()*4+2, color));
     }
@@ -1433,40 +1874,99 @@
         const overlay = document.getElementById('damage-overlay');
         overlay.style.opacity = '1';
         setTimeout(() => { overlay.style.opacity = '0'; }, 100);
+        shakeTimer = 10; // Screen shake
+    }
+
+    // --- QTE SYSTEM ---
+    function triggerQTE(action, obstacle, maxTime) {
+        if (qteActive) return;
+        qteActive = true;
+        qteTargetAction = action;
+        qteTargetObstacle = obstacle;
+        obstacle.qteTriggered = true;
+        
+        timeScale = 0.1; // SLOW MOTION
+        
+        qteMaxTime = maxTime;
+        qteTimer = qteMaxTime;
+        
+        const overlay = document.getElementById('qte-overlay');
+        const prompt = document.getElementById('qte-prompt');
+        overlay.classList.add('active');
+        prompt.innerText = action === 'JUMP' ? "TAP UP!" : "SWIPE DOWN!";
+        
+        audio.playSFX('slowmo');
+    }
+
+    function resolveQTE(success) {
+        qteActive = false;
+        const overlay = document.getElementById('qte-overlay');
+        overlay.classList.remove('active');
+        
+        if (success) {
+            timeScale = 1.0;
+            // Execute super move
+            if (qteTargetAction === 'JUMP') player.superJump();
+            if (qteTargetAction === 'DIVE') player.superDive();
+            
+            // Destroy obstacle with flair
+            if (qteTargetObstacle) {
+                createParticles(qteTargetObstacle.x, qteTargetObstacle.y, 30, '#FFFFFF');
+                qteTargetObstacle.markedForDeletion = true;
+            }
+            
+            spawnFloatingText(player.x, player.y - 50, "PERFECT!", "#00FFFF");
+            energy = Math.min(maxEnergy, energy + 10);
+        } else {
+            timeScale = 1.0;
+            spawnFloatingText(player.x, player.y - 50, "TOO SLOW!", "#E76F51");
+            // Fail means you likely hit the obstacle naturally in the next frames
+        }
+    }
+
+    function handleQTEInput(inputAction) {
+        if (!qteActive) return false; // Not in QTE
+        
+        if (inputAction === qteTargetAction) {
+            resolveQTE(true);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     function spawnLogic() {
-        // Reduced spawn rate: x0.75 means 1/0.75 = 1.33x time between spawns
         let spawnThreshold = 95 - (gameSpeed * 3); 
         if (spawnThreshold < 30) spawnThreshold = 30; 
         
         if (frameCount % Math.floor(spawnThreshold) === 0) {
             const r = Math.random();
-            
-            // Spawn Thresholds (Score is floored, so use integers)
             const canSpawnFlyingRock = score > 300; 
-            const canSpawnDrone = score > 750; // NEW ENEMY 1: SONIC DRONE (750m)
+            const canSpawnDrone = score > 750; 
             const canSpawnMissile = score > 1500;
-            const canSpawnWave = score > 1800; // NEW ENEMY 2: PLASMA WAVE (1800m)
+            const canSpawnWave = score > 1800; 
 
             let type = 'ROCK';
+            if (canSpawnWave && r < 0.1) type = 'WAVE';
+            else if (canSpawnMissile && r < 0.25) type = 'MISSILE';
+            else if (canSpawnDrone && r < 0.45) type = 'DRONE';
+            else if (canSpawnFlyingRock && r < 0.65) type = 'FLYING_ROCK';
+            else if (r < 0.825) type = 'SUN'; 
+            else type = 'ROCK';
             
-            // Determine spawn type (prioritizing newer, more complex enemies)
-            if (canSpawnWave && r < 0.1) {
-                type = 'WAVE';
-            } else if (canSpawnMissile && r < 0.25) {
-                type = 'MISSILE';
-            } else if (canSpawnDrone && r < 0.45) { // Drone has a high chance once unlocked
-                type = 'DRONE';
-            } else if (canSpawnFlyingRock && r < 0.65) {
-                type = 'FLYING_ROCK';
-            } else if (r < 0.825) { // Equal split between 0.65 and 1.0 (midpoint 0.825) for Sun/Rock
-                type = 'SUN'; 
-            } else { 
-                type = 'ROCK';
+            // Check for Platform Collision
+            let spawnX = canvas.width + 100;
+            let safeToSpawn = true;
+            for(let p of terrain.platforms) {
+                if (spawnX < p.x + p.width + 50 && spawnX + 40 > p.x - 50) {
+                    safeToSpawn = false;
+                    break;
+                }
             }
-            
-            obstacles.push(new Obstacle(type));
+
+            if (safeToSpawn) {
+                obstacles.push(new Obstacle(type));
+            }
         }
         
         if (frameCount % 150 === 0) {
@@ -1475,89 +1975,78 @@
     }
 
     function drawEnvironment() {
-        // DAY/NIGHT CYCLE LOGIC
-        // cycle speed: full day in ~2000 frames (approx 30s)
-        dayTime = (dayTime + 0.0005) % 1.0; 
+        dayTime = (dayTime + 0.0005 * timeScale) % 1.0; 
         
         let topC, botC;
-        
-        // Interpolate Sky Colors
-        if (dayTime < 0.25) { // Dawn -> Noon
+        if (dayTime < 0.25) { 
             let t = dayTime / 0.25;
             topC = lerpColor(SKY_COLORS.dawn.top, SKY_COLORS.noon.top, t);
             botC = lerpColor(SKY_COLORS.dawn.bot, SKY_COLORS.noon.bot, t);
-        } else if (dayTime < 0.5) { // Noon -> Dusk
+        } else if (dayTime < 0.5) { 
             let t = (dayTime - 0.25) / 0.25;
             topC = lerpColor(SKY_COLORS.noon.top, SKY_COLORS.dusk.top, t);
             botC = lerpColor(SKY_COLORS.noon.bot, SKY_COLORS.dusk.bot, t);
-        } else if (dayTime < 0.75) { // Dusk -> Night
+        } else if (dayTime < 0.75) { 
             let t = (dayTime - 0.5) / 0.25;
             topC = lerpColor(SKY_COLORS.dusk.top, SKY_COLORS.night.top, t);
             botC = lerpColor(SKY_COLORS.dusk.bot, SKY_COLORS.night.bot, t);
-        } else { // Night -> Dawn
+        } else { 
             let t = (dayTime - 0.75) / 0.25;
             topC = lerpColor(SKY_COLORS.night.top, SKY_COLORS.dawn.top, t);
             botC = lerpColor(SKY_COLORS.night.bot, SKY_COLORS.dawn.bot, t);
         }
 
-        // Draw Sky
         let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
         skyGradient.addColorStop(0, topC);
         skyGradient.addColorStop(1, botC);
         ctx.fillStyle = skyGradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Camera Shake Effect
+        if (shakeTimer > 0) {
+            ctx.save();
+            let dx = (Math.random() - 0.5) * 10;
+            let dy = (Math.random() - 0.5) * 10;
+            ctx.translate(dx, dy);
+            shakeTimer--;
+        }
 
-        // Draw Sun/Moon
+        if (audio.musicPulse > 1.0) audio.musicPulse *= 0.95;
+        let pulse = audio.musicPulse;
+
         let celestialX = (dayTime * canvas.width * 1.5) - (canvas.width * 0.25);
         let celestialY = canvas.height * 0.2 + Math.cos(dayTime * Math.PI * 2) * 50;
         
         if (dayTime > 0.2 && dayTime < 0.7) {
-            // SUN
             ctx.fillStyle = "#E9C46A";
-            ctx.shadowColor = "#F4A261";
-            ctx.shadowBlur = 40;
-            ctx.beginPath(); ctx.arc(celestialX, celestialY, 40, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
+            ctx.shadowColor = "#F4A261"; ctx.shadowBlur = 40 * pulse; 
+            ctx.beginPath(); ctx.arc(celestialX, celestialY, 40 * pulse, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
         } else {
-             // MOON
             ctx.fillStyle = "#F4F7F2";
-            ctx.shadowColor = "#FFFFFF";
-            ctx.shadowBlur = 15;
-            ctx.beginPath(); ctx.arc(celestialX, celestialY, 30, 0, Math.PI*2); ctx.fill();
-            // Crater
-            ctx.fillStyle = "#E0E0E0";
-            ctx.beginPath(); ctx.arc(celestialX + 10, celestialY - 5, 8, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
+            ctx.shadowColor = "#FFFFFF"; ctx.shadowBlur = 15 * pulse; 
+            ctx.beginPath(); ctx.arc(celestialX, celestialY, 30 * pulse, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#E0E0E0"; ctx.beginPath(); ctx.arc(celestialX + 10, celestialY - 5, 8, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
         }
 
-        // Parallax Layers
-        bgLayers.forEach(layer => {
-            layer.update();
-            layer.draw(ctx, dayTime);
-        });
-
+        bgLayers.forEach(layer => { layer.update(); layer.draw(ctx); });
         clouds.forEach(c => { c.update(); c.draw(); });
 
-        // Ground
-        let groundGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
-        groundGradient.addColorStop(0, "#E6EBE0");
-        groundGradient.addColorStop(1, "#D8E2DC");
-        ctx.fillStyle = groundGradient;
-        ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-        ctx.strokeStyle = '#2F6F6F';
-        ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(canvas.width, groundY); ctx.stroke();
-        
-        // Night Overlay
+        terrain.update();
+        terrain.draw(ctx);
+        weather.update();
+        weather.draw(ctx);
+
         if (dayTime > 0.6 || dayTime < 0.1) {
             let opacity = 0;
             if (dayTime > 0.6 && dayTime < 0.75) opacity = (dayTime - 0.6) / 0.15 * 0.4;
-            else if (dayTime >= 0.75 || dayTime < 0.0) opacity = 0.4; // max dark
+            else if (dayTime >= 0.75 || dayTime < 0.0) opacity = 0.4; 
             else if (dayTime < 0.1) opacity = (1 - (dayTime / 0.1)) * 0.4;
-            
             ctx.fillStyle = `rgba(10, 20, 40, ${opacity})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
+        
+        // Restore context if shook
+        if (shakeTimer >= 0) ctx.restore();
     }
 
     // --- QUIZ LOGIC ---
@@ -1597,7 +2086,6 @@
         if (type === 'MAGNET') buffs.magnet = true;
         if (type === 'SHIELD_REGEN') {
             buffs.shieldRegen = true;
-            // INSTANT REWARD: Regain 1 shield immediately if missing
             if (player.shieldCount < player.maxShields) {
                 player.shieldCount++;
                 createParticles(player.x, player.y, 10, '#FFF');
@@ -1637,58 +2125,90 @@
                        player.y + player.height - padding > obs.y + padding;
 
             if (hitX && hitY) {
+                // If Invulnerable from QTE, ignore
+                if (invulnerableTimer > 0) continue;
+
                 if (player.shieldCount > 0) {
                     player.shieldCount--;
                     obstacles.splice(i, 1);
                     createParticles(player.x, player.y, 10, player.skin.color);
                     flashScreen();
                     audio.playSFX('crash');
+                    spawnFloatingText(player.x, player.y - 30, "Shield Lost", "#FFF");
                 } else {
                     let dmg = obs.damage;
                     let particleColor = PALETTE.danger;
                     let endMessage = 'Impact!';
 
                     if (obs.type === 'SUN') {
-                        // Apply photosynthesis perk only for SUN damage
-                        if (player.skin.perk === 'photosynthesis') {
-                            dmg /= 2;
-                        }
+                        if (player.skin.perk === 'photosynthesis') dmg /= 2;
                         particleColor = PALETTE.sun;
                         endMessage = 'Heat Exhaustion';
                     } else if (obs.type === 'WAVE' || obs.type === 'DRONE') {
                          endMessage = obs.type === 'WAVE' ? 'Plasma Burn' : 'System Overload';
                          particleColor = obs.type === 'WAVE' ? '#FF00FF' : '#10FFD0';
+                    } else if (obs.type === 'LAVA_PLUME') {
+                        endMessage = 'Incinerated';
+                        particleColor = '#FF4500';
                     }
 
                     flashScreen();
                     audio.playSFX('crash');
-                    
                     energy -= dmg;
                     createParticles(player.x, player.y, 8, particleColor);
                     obstacles.splice(i, 1);
+                    spawnFloatingText(player.x, player.y - 30, "-" + Math.floor(dmg) + " Energy", "#E76F51");
                     
                     if (energy <= 0) endGame(endMessage); 
                 }
             }
         }
 
+        // IMPROVED ITEM PICKUP LOGIC
+        const itemPadding = 20;
         for (let i = collectibles.length - 1; i >= 0; i--) {
             let c = collectibles[i];
-            let hit = player.x < c.x + c.width && player.x + player.width > c.x &&
-                      player.y < c.y + c.height && player.y + player.height > c.y;
+            
+            // Expanded collision box for smoother collection
+            let hit = player.x < c.x + c.width + itemPadding && 
+                      player.x + player.width > c.x - itemPadding &&
+                      player.y < c.y + c.height + itemPadding && 
+                      player.y + player.height > c.y - itemPadding;
             
             if (hit) {
                 collectibles.splice(i, 1);
-                audio.playSFX('coin');
+                
                 if (c.type === 'SEAWEED') {
+                    audio.playSFX('coin');
                     let amount = 20;
                     if (player.skin.perk === 'eco_boost') amount = 40; 
                     energy = Math.min(maxEnergy, energy + amount);
                     createParticles(c.x, c.y, 5, '#2A9D8F');
-                } else {
+                    spawnFloatingText(c.x, c.y, "+" + amount + " Energy", "#2A9D8F");
+                } else if (c.type === 'WOOL') {
+                    audio.playSFX('coin');
                     if (player.shieldCount < player.maxShields) {
                         player.shieldCount++;
                         createParticles(c.x, c.y, 5, '#FFF');
+                        spawnFloatingText(c.x, c.y, "Shield Up", "#FFF");
+                    }
+                } else if (c.type === 'COIN') {
+                    audio.playSFX('coin');
+                    sessionCoins += 10;
+                    createParticles(c.x, c.y, 5, '#FFD700');
+                    spawnFloatingText(c.x, c.y, "+10 Coins", "#FFD700");
+                } else if (c.type === 'MYSTERY') {
+                    audio.playSFX('mystery');
+                    let r = Math.random();
+                    if (r < 0.5) {
+                        sessionCoins += 50;
+                        createParticles(c.x, c.y, 8, '#FFD700');
+                        spawnFloatingText(c.x, c.y, "+50 Coins", "#FFD700");
+                    } else {
+                        let amount = 50;
+                        energy = Math.min(maxEnergy, energy + amount);
+                        createParticles(c.x, c.y, 8, '#2A9D8F');
+                        spawnFloatingText(c.x, c.y, "+50 Energy", "#2A9D8F");
                     }
                 }
             }
@@ -1699,25 +2219,35 @@
         if (gameState !== 'PLAYING') return;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        frameCount++;
+        
+        // Update QTE State
+        if (qteActive) {
+            qteTimer -= 1; // Count down real frames
+            const fill = document.getElementById('qte-timer-fill');
+            fill.style.width = (qteTimer / qteMaxTime * 100) + "%";
+            
+            if (qteTimer <= 0) {
+                resolveQTE(false);
+            }
+        }
+        
+        frameCount++; // Still increments, animation logic depends on it
         
         let diffSettings = DIFFICULTIES[selectedDifficulty];
-
-        score += (gameSpeed * 0.05);
+        score += (gameSpeed * timeScale * 0.05); // Scale score by timeScale too
         
-        // Progression based on difficulty settings
         let targetSpeed = diffSettings.speed + (score / diffSettings.progression); 
         if (targetSpeed > MAX_SPEED) targetSpeed = MAX_SPEED;
         gameSpeed += (targetSpeed - gameSpeed) * 0.01;
         
-        if (score >= nextQuizThreshold) {
+        if (score >= nextQuizThreshold && !qteActive) {
             nextQuizThreshold += 700; 
             triggerQuiz();
             return; 
         }
 
         if (frameCount % 60 === 0) {
-            let drain = diffSettings.drain;
+            let drain = diffSettings.drain * timeScale;
             if (buffs.efficiency) drain *= 0.5;
             energy -= drain;
         }
@@ -1727,17 +2257,34 @@
         spawnLogic();
         drawEnvironment();
 
-        obstacles.forEach(o => o.update());
-        obstacles = obstacles.filter(o => o.x + o.width > -100);
-        obstacles.forEach(o => o.draw());
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            obstacles[i].update();
+            if (obstacles[i].markedForDeletion) {
+                obstacles.splice(i, 1);
+            } else if (obstacles[i].x + obstacles[i].width > -100) {
+                obstacles[i].draw();
+            } else {
+                obstacles.splice(i, 1);
+            }
+        }
 
-        collectibles.forEach(c => c.update());
-        collectibles = collectibles.filter(c => c.x + c.width > -100);
-        collectibles.forEach(c => c.draw());
+        for (let i = collectibles.length - 1; i >= 0; i--) {
+            collectibles[i].update();
+            if (collectibles[i].x + collectibles[i].width > -100) collectibles[i].draw();
+            else collectibles.splice(i, 1);
+        }
 
-        particles.forEach(p => p.update());
-        particles = particles.filter(p => p.life > 0);
-        particles.forEach(p => p.draw());
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            if (particles[i].life > 0) particles[i].draw();
+            else particles.splice(i, 1);
+        }
+
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            floatingTexts[i].update();
+            if (floatingTexts[i].life > 0) floatingTexts[i].draw(ctx);
+            else floatingTexts.splice(i, 1);
+        }
 
         player.draw();
         checkCollisions();
@@ -1774,40 +2321,29 @@
             highScore = score;
             localStorage.setItem('aether_highscore_v3', highScore);
         }
-
         saveGame();
-
         document.getElementById('final-score').innerText = Math.floor(score) + "m";
         document.getElementById('game-over-best').innerText = Math.floor(highScore) + "m";
         document.getElementById('coins-earned').innerText = "+" + earned + " Coins";
         document.getElementById('game-over-msg').innerText = reason;
-        
         showScreen('game-over-screen');
     }
 
     function resetGame() { startGame(); }
-
-    function openShop() {
-        showScreen('shop-screen');
-        renderShop();
-    }
+    function openShop() { showScreen('shop-screen'); renderShop(); }
 
     function renderShop() {
         const container = document.getElementById('shop-container');
         container.innerHTML = '';
-        
         SKINS.forEach(skin => {
             const owned = playerData.ownedSkins.includes(skin.id);
             const equipped = playerData.equippedSkin === skin.id;
-            
             const div = document.createElement('div');
             div.className = `shop-item ${equipped ? 'active' : ''}`;
             div.onclick = () => handleShopClick(skin.id);
-            
             let btnLabel = owned ? (equipped ? 'EQUIPPED' : 'EQUIP') : `${skin.cost} 🪙`;
             let btnClass = owned ? 'owned-tag' : 'skin-price';
             if (equipped) btnClass += ' active-tag'; 
-
             div.innerHTML = `
                 <div class="skin-preview" style="background:${skin.color}; border-color:${skin.secondary}"></div>
                 <div class="skin-name">${skin.name}</div>
@@ -1818,57 +2354,35 @@
         });
     }
 
-    // Modal System
     function showModal(msg, onConfirm) {
         const modal = document.getElementById('custom-modal');
         const msgEl = document.getElementById('modal-msg');
         const actionBtn = document.getElementById('modal-action-btn');
         const closeBtn = document.getElementById('modal-close-btn');
-
         msgEl.innerText = msg;
         modal.classList.remove('hidden');
-
         if (onConfirm) {
-            actionBtn.innerText = "Confirm";
-            closeBtn.style.display = "inline-block";
-            actionBtn.onclick = () => {
-                onConfirm();
-                modal.classList.add('hidden');
-            };
+            actionBtn.innerText = "Confirm"; closeBtn.style.display = "inline-block";
+            actionBtn.onclick = () => { onConfirm(); modal.classList.add('hidden'); };
         } else {
-            actionBtn.innerText = "OK";
-            closeBtn.style.display = "none";
-            actionBtn.onclick = () => {
-                modal.classList.add('hidden');
-            };
+            actionBtn.innerText = "OK"; closeBtn.style.display = "none";
+            actionBtn.onclick = () => { modal.classList.add('hidden'); };
         }
-        
         closeBtn.onclick = () => modal.classList.add('hidden');
     }
 
     function handleShopClick(id) {
         const skin = SKINS.find(s => s.id === id);
         const owned = playerData.ownedSkins.includes(id);
-
         if (owned) {
-            playerData.equippedSkin = id;
-            saveGame();
-            renderShop();
-            audio.playSFX('click');
+            playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('click');
         } else {
             if (playerData.coins >= skin.cost) {
                 showModal(`Buy ${skin.name} for ${skin.cost} Coins?`, () => {
-                    playerData.coins -= skin.cost;
-                    playerData.ownedSkins.push(id);
-                    playerData.equippedSkin = id;
-                    saveGame();
-                    renderShop();
-                    audio.playSFX('powerup');
+                    playerData.coins -= skin.cost; playerData.ownedSkins.push(id);
+                    playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('powerup');
                 });
-            } else {
-                showModal("Not enough coins! Keep running!");
-                audio.playSFX('click');
-            }
+            } else { showModal("Not enough coins! Keep running!"); audio.playSFX('click'); }
         }
     }
 
@@ -1877,55 +2391,60 @@
         if(id !== 'none') document.getElementById(id).classList.remove('hidden');
     }
 
-    // Input Handling - Optimized for Mobile
     window.addEventListener('keydown', (e) => {
-        if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); if (gameState === 'PLAYING') player.jump(); }
-        if (e.code === 'ArrowDown') { e.preventDefault(); if (gameState === 'PLAYING') player.dive(); }
+        if (e.code === 'Space' || e.code === 'ArrowUp') { 
+            e.preventDefault(); 
+            if (qteActive) {
+                handleQTEInput('JUMP');
+            } else if (gameState === 'PLAYING') {
+                player.jump(); 
+            }
+        }
+        if (e.code === 'ArrowDown') { 
+            e.preventDefault(); 
+            if (qteActive) {
+                handleQTEInput('DIVE');
+            } else if (gameState === 'PLAYING') {
+                player.dive(); 
+            }
+        }
     });
-    
     window.addEventListener('keyup', (e) => {
-        if (e.code === 'Space' || e.code === 'ArrowUp') {
-            if (gameState === 'PLAYING') player.cutJump();
-        }
+        if (e.code === 'Space' || e.code === 'ArrowUp') { if (gameState === 'PLAYING' && !qteActive) player.cutJump(); }
     });
-
     window.addEventListener('touchstart', (e) => {
-        // If we are in a menu (not playing), allow default behavior (scrolling, clicking divs)
-        // Also allow interaction with the Mute button at all times
-        if (gameState !== 'PLAYING' || e.target.closest('button') || e.target.closest('.feature-item') || e.target.closest('.shop-item')) {
-            return;
-        }
-
-        e.preventDefault();
-        // Use clientY for reliability on mobile
-        window.touchStartY = e.changedTouches[0].clientY;
+        if (gameState !== 'PLAYING' || e.target.closest('button') || e.target.closest('.feature-item') || e.target.closest('.shop-item')) return;
+        e.preventDefault(); window.touchStartY = e.changedTouches[0].clientY;
+        
+        // Tap handling for Jump QTE
+        if (qteActive && qteTargetAction === 'JUMP') handleQTEInput('JUMP');
     }, {passive: false});
     
     window.addEventListener('touchend', (e) => {
         if (gameState !== 'PLAYING') return;
-
         if(e.target.tagName === 'BUTTON') return;
-        
         e.preventDefault();
         
-        if (gameState === 'PLAYING') player.cutJump();
-
-        // Use clientY
         let deltaY = e.changedTouches[0].clientY - window.touchStartY;
         
-        if (deltaY > 30) { 
-            // Swipe Down
-            if (gameState === 'PLAYING') player.dive(); 
-        } else { 
-            // Tap or Swipe Up
-            if (gameState === 'PLAYING') player.jump(); 
+        if (qteActive) {
+            // Swipe down for Dive QTE
+            if (deltaY > 30 && qteTargetAction === 'DIVE') handleQTEInput('DIVE');
+            return;
+        }
+
+        if (gameState === 'PLAYING') player.cutJump();
+        if (deltaY > 30) { if (gameState === 'PLAYING') player.dive(); } 
+        else { if (gameState === 'PLAYING') player.jump(); }
+    });
+    window.addEventListener('mousedown', (e) => { 
+        if(e.target.tagName !== 'BUTTON' && gameState === 'PLAYING') {
+            if (qteActive && qteTargetAction === 'JUMP') handleQTEInput('JUMP');
+            else player.jump(); 
         }
     });
-    
-    window.addEventListener('mousedown', (e) => { if(e.target.tagName !== 'BUTTON' && gameState === 'PLAYING') player.jump(); });
-    window.addEventListener('mouseup', (e) => { if(gameState === 'PLAYING') player.cutJump(); });
+    window.addEventListener('mouseup', (e) => { if(gameState === 'PLAYING' && !qteActive) player.cutJump(); });
 
-    // Init
     resize();
     updateCoinDisplays();
 </script>
