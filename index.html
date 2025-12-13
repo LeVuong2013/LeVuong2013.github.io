@@ -13,9 +13,10 @@
             overflow: hidden;
             background-color: #F4F7F2;
             font-family: 'Montserrat', sans-serif;
-            touch-action: none;
+            touch-action: none; /* Critical for mobile games to prevent body scroll */
             user-select: none;
             -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Remove blue tap highlight on Android */
         }
 
         #game-container {
@@ -129,6 +130,10 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        #mute-btn:active {
+            transform: scale(0.9);
         }
 
         /* Screens */
@@ -151,6 +156,7 @@
             
             /* SCROLLABLE MAIN MENU SETUP */
             overflow-y: auto; 
+            touch-action: pan-y; /* Fixes mobile scrolling */
             justify-content: flex-start; /* Start from top to allow scrolling */
             padding-top: 40px;
             padding-bottom: 40px;
@@ -240,6 +246,10 @@
             box-shadow: 0 8px 25px rgba(47, 111, 111, 0.4);
             background: #265959;
         }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(47, 111, 111, 0.3);
+        }
 
         .btn-secondary {
             background: transparent;
@@ -320,6 +330,7 @@
             background: rgba(244, 247, 242, 0.5);
             padding: 15px;
             border-radius: 10px;
+            cursor: pointer; /* Signal clickability */
         }
 
         .icon-circle {
@@ -444,9 +455,20 @@
 
         @media (max-width: 768px) {
             h1 { font-size: 2.5rem; letter-spacing: 4px; }
+            h2 { font-size: 1rem; margin-bottom: 20px; }
             .shop-grid { grid-template-columns: 1fr; }
             .feature-grid { grid-template-columns: 1fr; gap: 10px; }
             .feature-item { flex-direction: row; gap: 15px; text-align: left; }
+            
+            /* Performance: Reduce blur on mobile */
+            .screen { backdrop-filter: blur(5px); }
+            
+            /* Make buttons easier to tap */
+            .btn { padding: 18px 30px; font-size: 1.2rem; }
+            .btn-option { padding: 15px 20px; font-size: 1rem; }
+            
+            /* Move mute button up slightly to avoid bottom bezel gesture conflict */
+            #mute-btn { bottom: 30px; right: 30px; width: 60px; height: 60px; }
         }
 
     </style>
@@ -504,7 +526,7 @@
         
         <!-- Extra content to demonstrate scroll if needed -->
         <div style="opacity: 0.5; font-size: 0.8rem; margin-bottom: 20px;">
-            v2.3 - Difficulty & Buffs Update
+            v2.5 - Mobile Fixes
         </div>
     </div>
 
@@ -776,6 +798,19 @@
         audio.init();
         audio.toggleMute();
     }
+    
+    // Mobile Audio Unlock Helper
+    let audioUnlocked = false;
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        if (audio.ctx && audio.ctx.state === 'suspended') {
+            audio.ctx.resume().then(() => {
+                audioUnlocked = true;
+            });
+        }
+    }
+    window.addEventListener('touchstart', unlockAudio, {once:true});
+    window.addEventListener('click', unlockAudio, {once:true});
 
     // --- System & Config ---
     const canvas = document.getElementById('gameCanvas');
@@ -1389,6 +1424,8 @@
     }
 
     function createParticles(x, y, count, color) {
+        // Optimization: Reduce particles on mobile for performance
+        if (window.innerWidth < 768) count = Math.ceil(count / 2);
         for(let i=0; i<count; i++) particles.push(new Particle(x, y, Math.random()*4+2, color));
     }
 
@@ -1840,7 +1877,7 @@
         if(id !== 'none') document.getElementById(id).classList.remove('hidden');
     }
 
-    // Input Handling
+    // Input Handling - Optimized for Mobile
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); if (gameState === 'PLAYING') player.jump(); }
         if (e.code === 'ArrowDown') { e.preventDefault(); if (gameState === 'PLAYING') player.dive(); }
@@ -1853,17 +1890,36 @@
     });
 
     window.addEventListener('touchstart', (e) => {
-        if(e.target.tagName !== 'BUTTON') e.preventDefault();
-        window.touchStartY = e.changedTouches[0].screenY;
+        // If we are in a menu (not playing), allow default behavior (scrolling, clicking divs)
+        // Also allow interaction with the Mute button at all times
+        if (gameState !== 'PLAYING' || e.target.closest('button') || e.target.closest('.feature-item') || e.target.closest('.shop-item')) {
+            return;
+        }
+
+        e.preventDefault();
+        // Use clientY for reliability on mobile
+        window.touchStartY = e.changedTouches[0].clientY;
     }, {passive: false});
     
     window.addEventListener('touchend', (e) => {
+        if (gameState !== 'PLAYING') return;
+
         if(e.target.tagName === 'BUTTON') return;
+        
         e.preventDefault();
+        
         if (gameState === 'PLAYING') player.cutJump();
 
-        if (e.changedTouches[0].screenY - window.touchStartY > 30) { if (gameState === 'PLAYING') player.dive(); }
-        else { if (gameState === 'PLAYING') player.jump(); }
+        // Use clientY
+        let deltaY = e.changedTouches[0].clientY - window.touchStartY;
+        
+        if (deltaY > 30) { 
+            // Swipe Down
+            if (gameState === 'PLAYING') player.dive(); 
+        } else { 
+            // Tap or Swipe Up
+            if (gameState === 'PLAYING') player.jump(); 
+        }
     });
     
     window.addEventListener('mousedown', (e) => { if(e.target.tagName !== 'BUTTON' && gameState === 'PLAYING') player.jump(); });
