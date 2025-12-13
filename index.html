@@ -496,6 +496,7 @@
 
         <div class="btn-group">
             <button class="btn" onclick="startGame()">Start Running</button>
+            <button class="btn btn-secondary" onclick="cycleDifficulty()" id="diff-btn">Difficulty: Medium</button>
             <button class="btn btn-shop" onclick="openShop()">Aether Shop</button>
             <button class="btn btn-secondary" onclick="showScreen('product-screen')">Our Technology</button>
             <button class="btn btn-secondary" onclick="showScreen('instructions-screen')">Instructions</button>
@@ -503,7 +504,7 @@
         
         <!-- Extra content to demonstrate scroll if needed -->
         <div style="opacity: 0.5; font-size: 0.8rem; margin-bottom: 20px;">
-            v2.2 - High Contrast Mode
+            v2.3 - Difficulty & Buffs Update
         </div>
     </div>
 
@@ -808,6 +809,16 @@
         { q: "Who is the set for?", opts: ["Men", "Women", "Kids", "Unisex"], ans: 3 }
     ];
 
+    // --- DIFFICULTY DATA ---
+    const DIFFICULTIES = {
+        EASY: { label: "Easy", speed: 6.0, progression: 200, drain: 0.5 }, 
+        MEDIUM: { label: "Medium", speed: 8.0, progression: 120, drain: 1.0 }, 
+        HARD: { label: "Hard", speed: 10.0, progression: 80, drain: 1.2 },
+        FLOW: { label: "Flow", speed: 13.0, progression: 50, drain: 1.5 }
+    };
+    const DIFF_KEYS = ['EASY', 'MEDIUM', 'HARD', 'FLOW'];
+    let selectedDifficulty = 'MEDIUM';
+
     // --- SAVE SYSTEM ---
     let playerData = JSON.parse(localStorage.getItem('aether_player_v3')) || {
         coins: 0,
@@ -835,15 +846,13 @@
     const GRAVITY = 0.65;          
     const BASE_JUMP_FORCE = -16;   
     const DIVE_FORCE = 25;
-    // START FASTER (x1.75): 10.0 * 1.75 = 17.5
-    const BASE_SPEED = 17.5; 
     const MAX_SPEED = 30;    
     
     // --- State Variables ---
     let gameState = 'MENU';
     let frameId;
     let score = 0;
-    let gameSpeed = BASE_SPEED;
+    let gameSpeed = 8.0; // will be overwritten by init
     let energy = 100;
     let maxEnergy = 100;
     let frameCount = 0;
@@ -1000,13 +1009,15 @@
                 this.isJumping = true;
             }
 
-            // Shield Regen
+            // Shield Regen Logic
             if (buffs.shieldRegen && this.shieldCount < this.maxShields) {
                 this.shieldRegenTimer++;
-                if (this.shieldRegenTimer > 1800) { 
+                // Reduced timer from 1800 (30s) to 600 (10s at 60fps)
+                if (this.shieldRegenTimer > 600) { 
                     this.shieldCount++;
                     this.shieldRegenTimer = 0;
                     createParticles(this.x, this.y, 10, '#FFF');
+                    audio.playSFX('powerup');
                 }
             }
 
@@ -1250,17 +1261,19 @@
                 ctx.fill();
                 ctx.shadowBlur = 0;
             } else {
-                // ROCK (Default)
+                // ROCK (Default) - Increased visibility for nightime
                 ctx.translate(this.x + this.width/2, this.y + this.height/2);
                 if (this.isMoving) ctx.rotate(this.angle);
-                ctx.fillStyle = '#4A5A6A';
+                ctx.fillStyle = '#4A5A6A'; // Dark base color
                 ctx.beginPath();
                 ctx.moveTo(this.points[0].x, this.points[0].y);
                 for(let i=1; i<this.points.length; i++) ctx.lineTo(this.points[i].x, this.points[i].y);
                 ctx.closePath();
                 ctx.fill();
-                ctx.strokeStyle = "rgba(255,255,255,0.2)";
-                ctx.lineWidth = 2; ctx.stroke();
+                // Increased contrast stroke for visibility
+                ctx.strokeStyle = "rgba(255,255,255,0.9)"; // Brighter white/near white
+                ctx.lineWidth = 3; // Thicker line
+                ctx.stroke();
             }
             ctx.restore();
         }
@@ -1359,7 +1372,10 @@
         particles = [];
         score = 0;
         sessionCoins = 0;
-        gameSpeed = BASE_SPEED;
+        
+        // APPLY DIFFICULTY START SPEED
+        gameSpeed = DIFFICULTIES[selectedDifficulty].speed;
+        
         frameCount = 0;
         dayTime = 0.3; // Start morning
         nextQuizThreshold = 700; 
@@ -1383,8 +1399,9 @@
     }
 
     function spawnLogic() {
-        let spawnThreshold = 70 - (gameSpeed * 3); // Reduced from 90 to 70 for higher base frequency
-        if (spawnThreshold < 20) spawnThreshold = 20; // Reduced from 30 to 20 for higher max frequency
+        // Reduced spawn rate: x0.75 means 1/0.75 = 1.33x time between spawns
+        let spawnThreshold = 95 - (gameSpeed * 3); 
+        if (spawnThreshold < 30) spawnThreshold = 30; 
         
         if (frameCount % Math.floor(spawnThreshold) === 0) {
             const r = Math.random();
@@ -1406,9 +1423,9 @@
                 type = 'DRONE';
             } else if (canSpawnFlyingRock && r < 0.65) {
                 type = 'FLYING_ROCK';
-            } else if (r > 0.9) { 
-                type = 'SUN'; // Floating Sun hazard (10% chance)
-            } else {
+            } else if (r < 0.825) { // Equal split between 0.65 and 1.0 (midpoint 0.825) for Sun/Rock
+                type = 'SUN'; 
+            } else { 
                 type = 'ROCK';
             }
             
@@ -1541,12 +1558,30 @@
     function applyBuff(type) {
         audio.playSFX('powerup');
         if (type === 'MAGNET') buffs.magnet = true;
-        if (type === 'SHIELD_REGEN') buffs.shieldRegen = true;
+        if (type === 'SHIELD_REGEN') {
+            buffs.shieldRegen = true;
+            // INSTANT REWARD: Regain 1 shield immediately if missing
+            if (player.shieldCount < player.maxShields) {
+                player.shieldCount++;
+                createParticles(player.x, player.y, 10, '#FFF');
+            }
+        }
         if (type === 'EFFICIENCY') buffs.efficiency = true;
         
         gameState = 'PLAYING';
         showScreen('none');
         gameLoop();
+    }
+
+    // --- DIFFICULTY SYSTEM ---
+    function cycleDifficulty() {
+        let idx = DIFF_KEYS.indexOf(selectedDifficulty);
+        idx = (idx + 1) % DIFF_KEYS.length;
+        selectedDifficulty = DIFF_KEYS[idx];
+        
+        const btn = document.getElementById('diff-btn');
+        btn.innerText = "Difficulty: " + DIFFICULTIES[selectedDifficulty].label;
+        audio.playSFX('click');
     }
 
     // --- MAIN GAME LOOP ---
@@ -1629,9 +1664,12 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         frameCount++;
         
+        let diffSettings = DIFFICULTIES[selectedDifficulty];
+
         score += (gameSpeed * 0.05);
-        // PROGRESSION 2X FASTER: Divisor is 60
-        let targetSpeed = BASE_SPEED + (score / 60); 
+        
+        // Progression based on difficulty settings
+        let targetSpeed = diffSettings.speed + (score / diffSettings.progression); 
         if (targetSpeed > MAX_SPEED) targetSpeed = MAX_SPEED;
         gameSpeed += (targetSpeed - gameSpeed) * 0.01;
         
@@ -1642,8 +1680,8 @@
         }
 
         if (frameCount % 60 === 0) {
-            let drain = 1;
-            if (buffs.efficiency) drain = 0.5;
+            let drain = diffSettings.drain;
+            if (buffs.efficiency) drain *= 0.5;
             energy -= drain;
         }
         if (energy <= 0) { endGame('Out of Energy'); return; }
