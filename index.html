@@ -2402,6 +2402,14 @@
     resize();
     updateCoinDisplays();
     renderBadges();
+    
+    // --- AUTORUN FIX FOR EXTERNAL HOSTING ---
+    // Show the menu initially but automatically click "Start Running" if no user interaction is detected after a short delay, 
+    // or rely on the user clicking the button, which is the safer design.
+    // We ensure the initial screen is displayed, and the user must click "Start Running" to begin.
+    // The issue might be that the start screen isn't visible, so we need to ensure that.
+    showScreen('start-screen'); 
+    
 </script>
 </body>
 </html>
