@@ -541,6 +541,11 @@
             .btn { padding: 18px 30px; font-size: 1.2rem; }
             .btn-option { padding: 15px 20px; font-size: 1rem; }
             #mute-btn { bottom: 30px; right: 30px; width: 60px; height: 60px; }
+            
+            /* Hide keyboard controls hint on mobile */
+            #controls-hint {
+                display: none !important;
+            }
         }
 
     </style>
@@ -664,15 +669,23 @@
         <div class="feature-grid" style="margin-top: 10px;">
             <div class="feature-item" onclick="applyBuff('MAGNET')">
                 <div class="icon-circle">🧲</div>
-                <div><strong>Magnet</strong><br>Attract Items</div>
+                <div><strong>Magnet</strong><br>Attract Items (Permanent)</div>
             </div>
             <div class="feature-item" onclick="applyBuff('SHIELD_REGEN')">
                 <div class="icon-circle">🛡️</div>
-                <div><strong>Regen</strong><br>Shields Restore</div>
+                <div><strong>Regen</strong><br>Shields Restore (Permanent)</div>
             </div>
             <div class="feature-item" onclick="applyBuff('EFFICIENCY')">
                 <div class="icon-circle">🔋</div>
-                <div><strong>Efficient</strong><br>Slower Drain</div>
+                <div><strong>Efficient</strong><br>Slower Drain (Permanent)</div>
+            </div>
+            <div class="feature-item" onclick="applyBuff('INVULNERABILITY')">
+                <div class="icon-circle">✨</div>
+                <div><strong>Invincible</strong><br>10s Immunity (Temporary)</div>
+            </div>
+            <div class="feature-item" onclick="applyBuff('COIN_DOUBLER')">
+                <div class="icon-circle">💎</div>
+                <div><strong>Doubler</strong><br>15s 2x Coins (Temporary)</div>
             </div>
         </div>
     </div>
@@ -696,11 +709,11 @@
             <div class="feature-grid" style="margin-bottom: 20px;">
                 <div class="feature-item">
                     <div class="icon-circle">👆</div>
-                    <div><strong>Tap / Space / W</strong><br>Jump</div>
+                    <div><strong>Tap / Swipe Up</strong><br>Jump</div>
                 </div>
                 <div class="feature-item">
                     <div class="icon-circle">👇</div>
-                    <div><strong>Swipe / Down / S</strong><br>Dive</div>
+                    <div><strong>Swipe Down</strong><br>Dive</div>
                 </div>
             </div>
             
@@ -723,6 +736,14 @@
                 <li><strong>Mystery Box (?):</strong> Grants 50 Coins.</li>
             </ul>
 
+            <h3>Quiz Power-ups</h3>
+            <ul class="info-list">
+                <li><strong>Invincible (✨):</strong> Grants 10 seconds of obstacle immunity (Temporary).</li>
+                <li><strong>Doubler (💎):</strong> Doubles coin collection for 15 seconds (Temporary).</li>
+                <li><strong>Magnet (🧲):</strong> Attracts nearby collectibles (Permanent for this run).</li>
+                <li><strong>Regen (🛡️):</strong> Allows your shield to restore over time (Permanent for this run).</li>
+                <li><strong>Efficient (🔋):</strong> Halves energy drain rate (Permanent for this run).</li>
+            </ul>
         </div>
         <button class="btn" style="max-width: 200px;" onclick="showScreen('start-screen')">Back</button>
     </div>
@@ -1033,6 +1054,7 @@
     let floatingTexts = []; 
     let shakeTimer = 0;
     let invulnerableTimer = 0; 
+    let coinDoublerTimer = 0; // New: Timer for coin doubling power-up
     
     let bossBattleActive = false;
     let bossDefeated = false;
@@ -1408,7 +1430,7 @@
                 let dx = p.x - prevX; let dy = p.y - prevY; let dist = Math.sqrt(dx*dx + dy*dy); let speed = gameSpeed * 0.8 * TIME_SCALE; 
                 if (dist > 5) { p.x -= (dx * 0.3) + speed; p.y -= dy * 0.3; } p.y += Math.sin(frameCount * 0.2 + index) * 2 * TIME_SCALE; prevX = p.x; prevY = p.y;
             });
-            if (invulnerableTimer > 0) invulnerableTimer -= TIME_SCALE;
+            // Removed invulnerableTimer update from here to the main gameLoop
             if (this.attackCooldown > 0) this.attackCooldown--;
             if (this.isAttacking && this.attackCooldown <= 0) this.isAttacking = false;
 
@@ -1592,8 +1614,12 @@
     }
 
     class Collectible {
-        constructor() {
-            this.width = 30; this.height = 30; this.x = canvas.width; this.y = Math.random() * (canvas.height * 0.6) + 50; 
+        // Constructor now accepts a target Y position
+        constructor(yTarget) {
+            this.width = 30; this.height = 30; 
+            this.x = canvas.width; 
+            this.y = yTarget || (Math.random() * (canvas.height * 0.6) + 50); // Use targetY if provided
+            
             const r = Math.random();
             if (r < 0.4) this.type = 'SEAWEED'; else if (r < 0.6) this.type = 'WOOL'; else if (r < 0.9) this.type = 'COIN'; else this.type = 'MYSTERY';
         }
@@ -1655,6 +1681,7 @@
         sessionCoins = 0;
         shakeTimer = 0;
         invulnerableTimer = 0; // Reset timer on init
+        coinDoublerTimer = 0; // Reset new timer
         
         bossBattleActive = false;
         bossDefeated = false;
@@ -1736,6 +1763,8 @@
 
     function applyBuff(type) {
         audio.playSFX('powerup');
+        
+        // Permanent Buffs (Magnet, Regen, Efficiency)
         if (type === 'MAGNET') buffs.magnet = true;
         if (type === 'SHIELD_REGEN') {
             buffs.shieldRegen = true;
@@ -1745,6 +1774,10 @@
             }
         }
         if (type === 'EFFICIENCY') buffs.efficiency = true;
+        
+        // Temporary Buffs
+        if (type === 'INVULNERABILITY') invulnerableTimer = 600; // 10 seconds at 60 FPS
+        if (type === 'COIN_DOUBLER') coinDoublerTimer = 900; // 15 seconds at 60 FPS
         
         gameState = 'PLAYING';
         showScreen('none');
@@ -1789,7 +1822,30 @@
         }
         
         if (frameCount % 150 === 0) {
-            if (Math.random() > 0.3) collectibles.push(new Collectible());
+            if (Math.random() > 0.3) {
+                // Determine reachable Y target
+                let targetY;
+                // Find a segment just off screen to determine the ground level
+                let segment = terrain.segments.find(s => s.x > canvas.width - 200); 
+                
+                if (segment) {
+                    let groundLevel = segment.y;
+                    // Spawn between 30 and 130px above ground, ensuring reachability
+                    targetY = Math.max(50, groundLevel - (Math.random() * 100 + 30)); 
+
+                    // Check for platform in the near future (within 500px) and potentially place collectible there
+                    let platform = terrain.platforms.find(p => p.x > canvas.width && p.x < canvas.width + 500);
+                    if (platform && Math.random() > 0.5) {
+                        // Spawn slightly above the platform, ensure not too high
+                        targetY = Math.min(platform.y - 40, groundLevel - 150); 
+                    }
+                } else {
+                    // Fallback 
+                    targetY = canvas.height * 0.5;
+                }
+                
+                collectibles.push(new Collectible(targetY));
+            }
         }
     }
 
@@ -1851,7 +1907,13 @@
             if (hitX && hitY) {
                 // SMOG_ZONE does not grant invulnerability, only drain (handled in Player.update)
                 if (obs.type === 'SMOG_ZONE') continue; 
-                if (invulnerableTimer > 0) continue;
+                // Check general invulnerability
+                if (invulnerableTimer > 0) {
+                    obstacles.splice(i, 1);
+                    createParticles(player.x, player.y, 8, '#FFD700');
+                    spawnFloatingText(player.x, player.y - 30, "Absorbed", "#FFD700");
+                    continue;
+                }
 
                 if (player.shieldCount > 0) {
                     player.shieldCount--; obstacles.splice(i, 1); createParticles(player.x, player.y, 10, player.skin.color); flashScreen(); audio.playSFX('crash'); spawnFloatingText(player.x, player.y - 30, "Shield Lost", "#FFF");
@@ -1871,8 +1933,8 @@
                 collectibles.splice(i, 1);
                 if (c.type === 'SEAWEED') { audio.playSFX('coin'); let amount = 20; if (player.skin.perk === 'eco_boost') amount = 40; energy = Math.min(maxEnergy, energy + amount); createParticles(c.x, c.y, 5, '#2A9D8F'); spawnFloatingText(c.x, c.y, "+" + amount + " Energy", "#2A9D8F"); } 
                 else if (c.type === 'WOOL') { audio.playSFX('coin'); if (player.shieldCount < player.maxShields) { player.shieldCount++; createParticles(c.x, c.y, 5, '#FFF'); spawnFloatingText(c.x, c.y, "Shield Up", "#FFF"); } } 
-                else if (c.type === 'COIN') { audio.playSFX('coin'); sessionCoins += 10; createParticles(c.x, c.y, 5, '#FFD700'); spawnFloatingText(c.x, c.y, "+10 Coins", "#FFD700"); } 
-                else if (c.type === 'MYSTERY') { audio.playSFX('mystery'); sessionCoins+=50; spawnFloatingText(player.x, player.y, "+50 Coins", "#FFD700"); }
+                else if (c.type === 'COIN') { audio.playSFX('coin'); let amount = 10; if (coinDoublerTimer > 0) amount *= 2; sessionCoins += amount; createParticles(c.x, c.y, 5, '#FFD700'); spawnFloatingText(c.x, c.y, "+" + amount + " Coins", "#FFD700"); } 
+                else if (c.type === 'MYSTERY') { audio.playSFX('mystery'); let amount = 50; if (coinDoublerTimer > 0) amount *= 2; sessionCoins+=amount; spawnFloatingText(player.x, player.y, "+" + amount + " Coins", "#FFD700"); }
             }
         }
     }
@@ -1882,6 +1944,10 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         frameCount++;
+        
+        // Update temporary timers
+        if (invulnerableTimer > 0) invulnerableTimer -= TIME_SCALE;
+        if (coinDoublerTimer > 0) coinDoublerTimer -= TIME_SCALE;
         
         let diffSettings = DIFFICULTIES[selectedDifficulty];
         
@@ -2012,22 +2078,40 @@
     
     // Touch controls
     window.addEventListener('touchstart', (e) => {
-        if (gameState !== 'PLAYING' || e.target.closest('button') || e.target.id === 'attack-btn') return;
-        e.preventDefault(); window.touchStartY = e.changedTouches[0].clientY;
+        // Crucial check: If the touch target is part of a UI button, abort game controls.
+        if (e.target.closest('button') || e.target.id === 'attack-btn') {
+            return;
+        }
+
+        if (gameState !== 'PLAYING') return;
+        e.preventDefault(); 
+        window.touchStartY = e.changedTouches[0].clientY;
         
-        // No horizontal movement in endless mode
     }, {passive: false});
     
     window.addEventListener('touchend', (e) => {
-        if (e.target.tagName === 'BUTTON' || e.target.id === 'attack-btn') return;
+        // Crucial check: If the touch target is part of a UI button, abort game controls.
+        if (e.target.closest('button') || e.target.id === 'attack-btn') {
+            return;
+        }
+
         e.preventDefault();
         
         if (gameState !== 'PLAYING') return;
         
         let deltaY = e.changedTouches[0].clientY - window.touchStartY;
+        
+        // Handle jump cut/coyote time logic regardless of swipe
         if (gameState === 'PLAYING') player.cutJump();
-        if (deltaY > 30) { if (gameState === 'PLAYING') player.dive(); } 
-        else { if (gameState === 'PLAYING') player.jump(); }
+        
+        if (deltaY > 30) { 
+            // Downward swipe (Dive)
+            if (gameState === 'PLAYING') player.dive(); 
+        } 
+        else { 
+            // Tap or upward swipe (Jump)
+            if (gameState === 'PLAYING') player.jump(); 
+        }
     });
     
     window.addEventListener('mousedown', (e) => { 
@@ -2036,144 +2120,6 @@
         }
     });
     window.addEventListener('mouseup', (e) => { if(gameState === 'PLAYING') player.cutJump(); });
-
-    resize();
-    updateCoinDisplays();
-    renderBadges();
-</script>
-</body>
-</html>
-            let drain = diffSettings.drain * timeScale;
-            if (buffs.efficiency) drain *= 0.5;
-            energy -= drain;
-        }
-        if (energy <= 0) { endGame('Out of Energy'); return; }
-
-        player.update();
-        if (bossBattleActive && boss) boss.update();
-        spawnLogic();
-        drawEnvironment();
-
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            obstacles[i].update();
-            if (obstacles[i].markedForDeletion) { obstacles.splice(i, 1); } 
-            else if (obstacles[i].x + obstacles[i].width > -100) { obstacles[i].draw(); } 
-            else { obstacles.splice(i, 1); }
-        }
-        for (let i = collectibles.length - 1; i >= 0; i--) { collectibles[i].update(); if (collectibles[i].x + collectibles[i].width > -100) collectibles[i].draw(); else collectibles.splice(i, 1); }
-        for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].life > 0) particles[i].draw(); else particles.splice(i, 1); }
-        for (let i = floatingTexts.length - 1; i >= 0; i--) { floatingTexts[i].update(); if (floatingTexts[i].life > 0) floatingTexts[i].draw(ctx); else floatingTexts.splice(i, 1); }
-
-        player.draw();
-        checkCollisions();
-        
-        // Update Attack Button Visibility
-        if (bossBattleActive) {
-            document.getElementById('attack-btn').style.display = player.hasSword ? 'flex' : 'none';
-        }
-
-
-        document.getElementById('score').innerText = Math.floor(score);
-        document.getElementById('hud-highscore').innerText = Math.floor(highScore); 
-        const bar = document.getElementById('energy-fill');
-        bar.style.width = Math.max(0, (energy / maxEnergy) * 100) + '%';
-        if (energy < 30) bar.style.background = PALETTE.danger; else bar.style.background = `linear-gradient(90deg, #2A9D8F, #2F6F6F)`;
-
-        frameId = requestAnimationFrame(gameLoop);
-    }
-
-    // --- State Management ---
-    function startGame() { showScreen('none'); init(); gameState = 'PLAYING'; gameLoop(); audio.playSFX('powerup'); }
-    function endGame(reason) {
-        gameState = 'GAMEOVER'; cancelAnimationFrame(frameId); audio.stopBGM(); audio.playSFX('crash');
-        let earned = Math.floor(score / 10) + sessionCoins; playerData.coins += earned;
-        if (score > highScore) { highScore = score; localStorage.setItem('aether_highscore_v4', highScore); }
-        if (playerData.coins >= 1000) unlockBadge('rich');
-        saveGame();
-        document.getElementById('final-score').innerText = Math.floor(score) + "m"; document.getElementById('game-over-best').innerText = Math.floor(highScore) + "m"; document.getElementById('coins-earned').innerText = "+" + earned + " Coins"; document.getElementById('game-over-msg').innerText = reason; showScreen('game-over-screen');
-    }
-    function continueEndless() { gameState = 'PLAYING'; showScreen('none'); gameLoop(); }
-    function resetGame() { startGame(); }
-    function openShop() { showScreen('shop-screen'); renderShop(); }
-    
-    function playerAttack() {
-        if(gameState === 'PLAYING' && player.hasSword) player.attack();
-    }
-    
-    function renderShop() {
-        const container = document.getElementById('shop-container'); container.innerHTML = '';
-        SKINS.forEach(skin => {
-            const owned = playerData.ownedSkins.includes(skin.id); const equipped = playerData.equippedSkin === skin.id; const div = document.createElement('div'); div.className = `shop-item ${equipped ? 'active' : ''}`; div.onclick = () => handleShopClick(skin.id);
-            let btnLabel = owned ? (equipped ? 'EQUIPPED' : 'EQUIP') : `${skin.cost} 🪙`; let btnClass = owned ? 'owned-tag' : 'skin-price'; if (equipped) btnClass += ' active-tag'; 
-            div.innerHTML = `<div class="skin-preview" style="background:${skin.color}; border-color:${skin.secondary}"></div><div class="skin-name">${skin.name}</div><div class="skin-perk">${skin.desc}</div><div class="${btnClass}">${btnLabel}</div>`; container.appendChild(div);
-        });
-    }
-    function showModal(msg, onConfirm) { const modal = document.getElementById('custom-modal'); const msgEl = document.getElementById('modal-msg'); const actionBtn = document.getElementById('modal-action-btn'); const closeBtn = document.getElementById('modal-close-btn'); msgEl.innerText = msg; modal.classList.remove('hidden'); if (onConfirm) { actionBtn.innerText = "Confirm"; closeBtn.style.display = "inline-block"; actionBtn.onclick = () => { onConfirm(); modal.classList.add('hidden'); }; } else { actionBtn.innerText = "OK"; closeBtn.style.display = "none"; actionBtn.onclick = () => { modal.classList.add('hidden'); }; } closeBtn.onclick = () => modal.classList.add('hidden'); }
-    function handleShopClick(id) { const skin = SKINS.find(s => s.id === id); const owned = playerData.ownedSkins.includes(id); if (owned) { playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('click'); } else { if (playerData.coins >= skin.cost) { showModal(`Buy ${skin.name} for ${skin.cost} Coins?`, () => { playerData.coins -= skin.cost; playerData.ownedSkins.push(id); playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('powerup'); }); } else { showModal("Not enough coins! Keep running!"); audio.playSFX('click'); } } }
-    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); if(id !== 'none') document.getElementById(id).classList.remove('hidden'); }
-
-    window.addEventListener('keydown', (e) => {
-        // --- BOSS CONTROLS (WASD) ---
-        if (bossBattleActive) {
-            if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.vx = -10;
-            if (e.code === 'ArrowRight' || e.code === 'KeyD') player.vx = 10;
-            if (e.code === 'KeyF') player.attack();
-        }
-
-        // --- GENERAL CONTROLS (Space, Up, W, Down, S) ---
-        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { 
-            e.preventDefault(); 
-            if (qteActive) { handleQTEInput('JUMP'); } 
-            else if (gameState === 'PLAYING') { player.jump(); } 
-        }
-        if (e.code === 'ArrowDown' || e.code === 'KeyS') { 
-            e.preventDefault(); 
-            if (qteActive) { handleQTEInput('DIVE'); } 
-            else if (gameState === 'PLAYING') { player.dive(); } 
-        }
-    });
-
-    window.addEventListener('keyup', (e) => {
-        if (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD') player.vx = 0;
-        if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { 
-            if (gameState === 'PLAYING' && !qteActive) player.cutJump(); 
-        }
-    });
-    
-    // Touch controls for Boss
-    window.addEventListener('touchstart', (e) => {
-        if (gameState !== 'PLAYING' || e.target.closest('button') || e.target.id === 'attack-btn') return;
-        e.preventDefault(); window.touchStartY = e.changedTouches[0].clientY;
-        if (qteActive && qteTargetAction === 'JUMP') handleQTEInput('JUMP');
-        
-        // Mobile Boss Movement
-        if (bossBattleActive) {
-            if (e.changedTouches[0].clientX < window.innerWidth / 2) player.vx = -10;
-            else player.vx = 10;
-        }
-    }, {passive: false});
-    
-    window.addEventListener('touchend', (e) => {
-        if (gameState !== 'PLAYING') return;
-        if(e.target.tagName === 'BUTTON' || e.target.id === 'attack-btn') return;
-        e.preventDefault();
-        
-        if (bossBattleActive) player.vx = 0; // Stop X movement
-
-        let deltaY = e.changedTouches[0].clientY - window.touchStartY;
-        if (qteActive) { if (deltaY > 30 && qteTargetAction === 'DIVE') handleQTEInput('DIVE'); return; }
-        if (gameState === 'PLAYING') player.cutJump();
-        if (deltaY > 30) { if (gameState === 'PLAYING') player.dive(); } 
-        else { if (gameState === 'PLAYING') player.jump(); }
-    });
-    
-    window.addEventListener('mousedown', (e) => { 
-        if(e.target.tagName !== 'BUTTON' && e.target.id !== 'attack-btn' && gameState === 'PLAYING') {
-            if (qteActive && qteTargetAction === 'JUMP') handleQTEInput('JUMP');
-            else player.attack(); // Left click to attack
-        }
-    });
-    window.addEventListener('mouseup', (e) => { if(gameState === 'PLAYING' && !qteActive) player.cutJump(); });
 
     resize();
     updateCoinDisplays();
