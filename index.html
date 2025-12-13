@@ -681,7 +681,7 @@
             </div>
             <div class="feature-item" onclick="applyBuff('INVULNERABILITY')">
                 <div class="icon-circle">✨</div>
-                <div><strong>Invincible</strong><br>10s Immunity (Temporary)</div>
+                <div><strong>Invincible</strong><br>3s Immunity (Temporary)</div>
             </div>
             <div class="feature-item" onclick="applyBuff('COIN_DOUBLER')">
                 <div class="icon-circle">💎</div>
@@ -726,6 +726,7 @@
                 <li><strong>CO2 Emission Flare:</strong> Floating sun-like object that drains Comfort on contact.</li>
                 <li><strong>Microfiber Arrow:</strong> Fast, straight aerial projectile.</li>
                 <li><strong>Landfill Drone:</strong> Flying mechanical threat.</li>
+                <li><strong>Wildfire Ember:</strong> Large, fast, high-altitude spinning ember (Fire risk).</li>
             </ul>
             
             <h3>Aether Collectibles</h3>
@@ -738,7 +739,7 @@
 
             <h3>Quiz Power-ups</h3>
             <ul class="info-list">
-                <li><strong>Invincible (✨):</strong> Grants 10 seconds of obstacle immunity (Temporary).</li>
+                <li><strong>Invincible (✨):</strong> Grants 3 seconds of obstacle immunity (Temporary).</li>
                 <li><strong>Doubler (💎):</strong> Doubles coin collection for 15 seconds (Temporary).</li>
                 <li><strong>Magnet (🧲):</strong> Attracts nearby collectibles (Permanent for this run).</li>
                 <li><strong>Regen (🛡️):</strong> Allows your shield to restore over time (Permanent for this run).</li>
@@ -1352,7 +1353,9 @@
     
     let bgLayers = []; 
     function resize(){ 
-        canvas.width=window.innerWidth; canvas.height=window.innerHeight; groundY=canvas.height-(canvas.height*0.15); 
+        canvas.width=window.innerWidth; canvas.height=window.innerHeight; 
+        // Set groundY so that the ground takes up 30% of the screen height (70% down)
+        groundY=canvas.height-(canvas.height*0.30); 
         
         bgLayers = [
             // Distant Mountains (Slowest)
@@ -1514,6 +1517,20 @@
                  this.width = 150; this.height = 80; this.y = spawnY - 150 - (Math.random() * 100); this.damage = 0; // No impact damage, only drain
                  this.isStatic = true;
             }
+            // NEW AERIAL THREAT: WILDFIRE EMBER
+            else if (type === 'WILDFIRE_EMBER') { 
+                 this.width = 80; this.height = 30; // Increased size (BIGGER)
+                 
+                 // Spawn slightly higher up, between 35% and 55% of screen height
+                 const spawnCenter = canvas.height * 0.45; // Shifted center slightly higher (was 0.5)
+                 const variance = canvas.height * 0.2; 
+                 this.y = yOverride || (spawnCenter + (Math.random() - 0.5) * variance); 
+
+                 // REDUCED SPEED: from 15 + Math.random() * 5 to 12 + Math.random() * 3
+                 this.speedX = 12 + Math.random() * 3; 
+                 this.damage = 35;
+                 this.angle = Math.random() * Math.PI * 2; // Initial spinning angle
+            }
             else { this.width = 40; this.height = 50; this.y = spawnY - this.height - 5; this.damage = 15; } // STIFF_NYLON_TAG (Ground Default)
             
             if (!xOverride) this.x = canvas.width + Math.random() * 100;
@@ -1539,6 +1556,10 @@
             else if (this.type === 'CO2_FLARE') this.y = this.initialY + Math.sin(frameCount * 0.05) * 50;
             else if (this.type === 'SMOG_ZONE') { this.y = this.initialY + Math.sin(frameCount * 0.03) * 10; } // Slow float for smog
             else if (this.type === 'STIFF_NYLON_TAG' && this.isMoving) { this.x -= 2.5 * TIME_SCALE; this.angle -= 0.15 * TIME_SCALE; }
+            // NEW AERIAL THREAT: WILDFIRE EMBER
+            else if (this.type === 'WILDFIRE_EMBER') {
+                 this.angle += 0.3 * TIME_SCALE;
+            }
             
             for (let p of terrain.platforms) { if (this.x < p.x + p.width - 5 && this.x + this.width > p.x + 5 && this.y < p.y + p.height - 5 && this.y + this.height > p.y + 5) this.markedForDeletion = true; }
         }
@@ -1597,7 +1618,31 @@
                 ctx.arc(50, -15, 45, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
-            } else {
+            } 
+            // NEW AERIAL THREAT: WILDFIRE EMBER (Made BIGGER with new fiery draw)
+            else if (this.type === 'WILDFIRE_EMBER') {
+                 ctx.rotate(this.angle);
+                 ctx.shadowColor = '#FF8C00'; 
+                 ctx.shadowBlur = 20;
+                 ctx.globalAlpha = 0.8;
+
+                 // Draw the fiery core (3 overlapping circles/blobs)
+                 ctx.fillStyle = '#FF4500'; // Deep Orange/Red
+                 ctx.beginPath();
+                 ctx.arc(-this.width * 0.2, 0, this.width * 0.3, 0, Math.PI * 2);
+                 ctx.fill();
+
+                 ctx.fillStyle = '#FFA500'; // Brighter Orange
+                 ctx.beginPath();
+                 ctx.arc(this.width * 0.2, 0, this.width * 0.25, 0, Math.PI * 2);
+                 ctx.fill();
+
+                 ctx.fillStyle = '#FFD700'; // Yellowish Core
+                 ctx.beginPath();
+                 ctx.arc(0, 0, this.width * 0.2, 0, Math.PI * 2);
+                 ctx.fill();
+            }
+            else {
                 // STIFF_NYLON_TAG (Ground Default)
                 ctx.rotate(this.angle); 
                 ctx.fillStyle = '#E0E0E0'; // Light grey/white for tag/stiffness
@@ -1664,6 +1709,8 @@
     }
 
     // --- Logic ---
+    var player, terrain, weather, obstacles, collectibles, particles, clouds;
+
     function init() {
         resize();
         audio.init(); 
@@ -1776,7 +1823,7 @@
         if (type === 'EFFICIENCY') buffs.efficiency = true;
         
         // Temporary Buffs
-        if (type === 'INVULNERABILITY') invulnerableTimer = 600; // 10 seconds at 60 FPS
+        if (type === 'INVULNERABILITY') invulnerableTimer = 180; // 3 seconds at 60 FPS
         if (type === 'COIN_DOUBLER') coinDoublerTimer = 900; // 15 seconds at 60 FPS
         
         gameState = 'PLAYING';
@@ -1792,9 +1839,9 @@
         // T1: Start (Ground Default, CO2, Microfiber Arrow)
         let availableObstacles = ['STIFF_NYLON_TAG', 'CO2_FLARE', 'MICROFIBER_ARROW']; 
         
-        // T2: 1000m (Landfill Bale, generic Arrow, Landfill Drone)
+        // T2: 1000m (Landfill Bale, generic Arrow, Landfill Drone, NEW: WILDFIRE_EMBER)
         if (score >= 1000) {
-            availableObstacles.push('PLASTIC_BALE', 'ARROW', 'LANDFILL_DRONE'); 
+            availableObstacles.push('PLASTIC_BALE', 'ARROW', 'LANDFILL_DRONE', 'WILDFIRE_EMBER'); 
         }
         
         // T3: 3000m (PLASTIC_BOTTLE (revert), SMOG_ZONE (revert))
