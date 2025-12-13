@@ -124,6 +124,7 @@
             display: none; 
             flex-direction: column;
             align-items: center;
+            pointer-events: none;
         }
         .boss-name {
             color: #8B0000;
@@ -135,11 +136,13 @@
         }
         .boss-hp-bar {
             width: 100%;
+            max-width: 400px;
             height: 20px;
             background: rgba(0,0,0,0.5);
             border: 2px solid #8B0000;
             border-radius: 10px;
             overflow: hidden;
+            box-shadow: 0 0 10px rgba(139, 0, 0, 0.5);
         }
         #boss-hp-fill {
             width: 100%;
@@ -187,6 +190,7 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             align-items: center;
             justify-content: center;
+            z-index: 10;
         }
         #attack-btn:active { transform: scale(0.95); background: #d65d40; }
 
@@ -584,7 +588,7 @@
         </div>
         
         <div style="text-align: center; padding-bottom: 20px; opacity: 0.6; font-size: 0.8rem; color: #2F6F6F;" id="controls-hint">
-            Space/Up/W: Jump | Down/S: Dive
+            Space/Up/W: Jump | Down/S: Dive | F/Tap Attack: Launch Projectile
         </div>
     </div>
 
@@ -681,7 +685,7 @@
             </div>
             <div class="feature-item" onclick="applyBuff('INVULNERABILITY')">
                 <div class="icon-circle">✨</div>
-                <div><strong>Invincible</strong><br>10s Immunity (Temporary)</div>
+                <div><strong>Invincible</strong><br>3s Immunity (Temporary)</div>
             </div>
             <div class="feature-item" onclick="applyBuff('COIN_DOUBLER')">
                 <div class="icon-circle">💎</div>
@@ -738,12 +742,21 @@
 
             <h3>Quiz Power-ups</h3>
             <ul class="info-list">
-                <li><strong>Invincible (✨):</strong> Grants 10 seconds of obstacle immunity (Temporary).</li>
+                <li><strong>Invincible (✨):</strong> Grants 3 seconds of obstacle immunity (Temporary).</li>
                 <li><strong>Doubler (💎):</strong> Doubles coin collection for 15 seconds (Temporary).</li>
                 <li><strong>Magnet (🧲):</strong> Attracts nearby collectibles (Permanent for this run).</li>
                 <li><strong>Regen (🛡️):</strong> Allows your shield to restore over time (Permanent for this run).</li>
                 <li><strong>Efficient (🔋):</strong> Halves energy drain rate (Permanent for this run).</li>
             </ul>
+            
+            <h3 style="margin-top: 20px;">7000m BOSS FIGHT</h3>
+            <ul class="info-list">
+                <li>At 7000m, regular obstacles cease and the <strong>NEMESIS A.I.</strong> appears.</li>
+                <li>Use the <strong>Attack button / F key</strong> to launch a projectile and defeat the boss.</li>
+                <li>The boss cycles between dangerous low sweeps (jump!) and high dive attacks (dive!).</li>
+                <li>Defeat the Boss to earn the <strong>Champion Badge</strong> and return to high-speed running!</li>
+            </ul>
+
         </div>
         <button class="btn" style="max-width: 200px;" onclick="showScreen('start-screen')">Back</button>
     </div>
@@ -866,8 +879,8 @@
                 this.playTone(800, 'triangle', 0.05, 0.05);
             }
             else if (type === 'laser') {
-                this.playTone(800, 'sawtooth', 0.5, 0.2);
-                this.playTone(400, 'square', 0.5, 0.2);
+                // New sound for player/boss projectiles
+                this.playTone(2000, 'sawtooth', 0.05, 0.1);
             }
             else if (type === 'boss_hit') {
                  this.playTone(200, 'square', 0.1, 0.3);
@@ -979,7 +992,7 @@
         EASY: { label: "Easy", speed: 9, progression: 0.001, drain: 0.3 }, 
         MEDIUM: { label: "Medium", speed: 11, progression: 0.0015, drain: 0.6 }, 
         HARD: { label: "Hard", speed: 14, progression: 0.002, drain: 0.9 }, 
-        FLOW: { label: "Flow", speed: 18, progression: 0.003, drain: 1.2 }  
+        FLOW: { label: "Extreme Flow", speed: 18, progression: 0.0035, drain: 1.3 } // Adjusted for user request (Reduced speed/drain)
     };
     const DIFF_KEYS = ['EASY', 'MEDIUM', 'HARD', 'FLOW'];
     let selectedDifficulty = 'MEDIUM';
@@ -1054,13 +1067,14 @@
     let floatingTexts = []; 
     let shakeTimer = 0;
     let invulnerableTimer = 0; 
-    let coinDoublerTimer = 0; // New: Timer for coin doubling power-up
+    let coinDoublerTimer = 0; // Timer for coin doubling power-up
     
     let bossBattleActive = false;
     let bossDefeated = false;
     let postBossMode = false;
     let winTriggered = false;
     let boss = null;
+    let playerAttacks = []; // New array for player projectiles
     
     const TIME_SCALE = 1.0; 
 
@@ -1202,18 +1216,165 @@
             ctx.lineWidth = 4;
             ctx.strokeRect(this.x, this.y, this.width, this.height);
             ctx.fillStyle = '#6E7F80';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.fillRect(this.x, p.y, this.width, this.height);
             // Apply subtle glow to the platform surface
             ctx.save();
             ctx.shadowColor = '#A8C686';
             ctx.shadowBlur = 5;
             ctx.fillStyle = '#A8C686';
-            ctx.fillRect(this.x, this.y, this.width, 6);
+            ctx.fillRect(this.x, this.y, 6, 6);
             ctx.restore();
         }
     }
 
-    // Boss class removed as it is not used in endless mode
+    // --- PLAYER ATTACK PROJECTILE ---
+    class PlayerAttack {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.width = 60;
+            this.height = 10;
+            this.vx = gameSpeed * 2.5; // Fast forward movement
+            this.life = 30; // 0.5 seconds lifespan (30 frames)
+            this.active = true;
+        }
+
+        update() {
+            this.x += this.vx * TIME_SCALE;
+            this.life--;
+            if (this.life <= 0) this.active = false;
+        }
+
+        draw(ctx) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, this.life / 30);
+            ctx.fillStyle = `#00AAAA`; // Teal energy
+            ctx.shadowColor = '#00FFFF';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.roundRect(this.x, this.y, this.width, this.height, 5);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+    // --- END PLAYER ATTACK PROJECTILE ---
+
+    // --- BOSS CLASS ---
+    class Boss {
+        constructor() {
+            this.width = 150;
+            this.height = 100;
+            this.x = canvas.width + 100;
+            this.y = groundY - 150;
+            this.maxHp = 1000;
+            this.hp = 1000;
+            this.active = true;
+            this.hitCooldown = 0;
+            this.attackTimer = 0;
+            this.initialY = this.y;
+            this.attackPattern = 0; // 0: Sweep, 1: Dive
+            this.attackInterval = 120; // Attack every 2 seconds (120 frames)
+        }
+
+        update() {
+            if (!this.active) return;
+
+            // Boss follows player slowly (Vertical tracking)
+            let targetY = player.y + player.height / 2;
+            this.y += (targetY - (this.y + this.height / 2)) * 0.005 * TIME_SCALE;
+            
+            // Horizontal movement to center screen
+            if (this.x > canvas.width * 0.75) {
+                this.x -= gameSpeed * TIME_SCALE * 0.5; // Slowly move onto screen
+            } else {
+                this.x += (canvas.width * 0.75 - this.x) * 0.01; // Settle slightly to the right
+            }
+
+            // Patterned Attack Logic
+            this.attackTimer++;
+            if (this.attackTimer > this.attackInterval / TIME_SCALE) {
+                this.attackTimer = 0;
+                this.attackPattern = (this.attackPattern + 1) % 2; // Cycle patterns
+                this.attackInterval = 90 + Math.random() * 60; // Slightly faster/varied interval (1.5s to 2.5s)
+
+                if (this.attackPattern === 0) { // Sweep Attack (Low)
+                    spawnFloatingText(this.x + this.width/2, this.y - 50, "Sweep Pulse (JUMP!)", "#FF4500");
+                    audio.playSFX('laser');
+                    // Spawn 3 PLASTIC_BOTTLE (fast, low)
+                    for(let i=0; i<3; i++) {
+                         // Spawn slightly higher up to give them time to drop low
+                         let obs = new Obstacle('PLASTIC_BOTTLE', this.x + 10, groundY - 50); 
+                         obs.speedX += 10; // Make it extra fast
+                         obstacles.push(obs);
+                    }
+                } else { // Dive Attack (High)
+                    spawnFloatingText(this.x + this.width/2, this.y - 50, "Dive Beam (DIVE!)", "#FF4500");
+                    audio.playSFX('laser');
+                    // Spawn 2 LANDFILL_DRONE (flying, high)
+                    for(let i=0; i<2; i++) {
+                         let obs = new Obstacle('LANDFILL_DRONE', this.x + 10, groundY - 180 + i*50);
+                         obs.speedX += 5; // Extra speed
+                         obstacles.push(obs);
+                    }
+                }
+            }
+
+            if (this.hitCooldown > 0) this.hitCooldown--;
+        }
+
+        takeDamage(amount) {
+            if (this.hitCooldown <= 0) {
+                this.hp -= amount;
+                this.hitCooldown = 10; // short invulnerability
+                createParticles(this.x + this.width/2, this.y + this.height/2, 20, '#FF4500');
+                spawnFloatingText(this.x + this.width/2, this.y, `-${amount}`, '#FF4500');
+                audio.playSFX('boss_hit');
+                
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.active = false;
+                    bossDefeated = true;
+                    bossBattleActive = false;
+                    unlockBadge('champion'); // Grant champion badge on defeat
+                    showModal("NEMESIS A.I. DEFEATED! The Run Continues.", () => { 
+                        postBossMode = true; 
+                        gameSpeed = DIFFICULTIES[selectedDifficulty].speed; // Resume speed after boss victory
+                        gameState = 'PLAYING';
+                        showScreen('none');
+                        gameLoop();
+                    });
+                }
+                updateBossHUD();
+            }
+        }
+
+        draw(ctx) {
+            if (!this.active) return;
+            
+            ctx.save();
+            ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+            
+            // Body (Dark, menacing)
+            ctx.fillStyle = '#444';
+            ctx.shadowColor = '#FF4500';
+            ctx.shadowBlur = (this.hitCooldown > 0) ? 0 : 20; 
+            
+            ctx.beginPath();
+            // Base shape (Ellipse/Blob)
+            ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Core (Red Eye)
+            ctx.fillStyle = (this.hitCooldown > 0) ? '#FFF' : '#FF0000';
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(0, 0, 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+    // --- END BOSS CLASS ---
 
     class WeatherSystem {
         constructor() { this.type = 'CLEAR'; this.particles = []; this.timer = 0; }
@@ -1451,7 +1612,7 @@
         dive() { if (this.isJumping) { this.vy = DIVE_FORCE; createParticles(this.x, this.y, 3, '#FFF'); } }
         
         attack() {
-            // Attack logic removed for endless mode boss interaction
+            // Attack logic handled by playerAttack() via button/key press
         }
 
         draw() {
@@ -1467,6 +1628,24 @@
                 ctx.beginPath(); ctx.arc(this.x + this.width/2, this.y + this.height/2, 40, 0, Math.PI*2); ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; ctx.fill(); 
                 ctx.shadowBlur = 0;
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.6)"; ctx.lineWidth = 2; ctx.stroke(); 
+                ctx.restore();
+            }
+
+            // NEW: Attack Animation (Visual only)
+            if (this.isAttacking) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.9)`;
+                ctx.lineWidth = 4;
+                ctx.shadowColor = '#00AAAA';
+                ctx.shadowBlur = 10;
+                
+                ctx.beginPath();
+                // Draw a simple energy swipe forward
+                ctx.moveTo(this.x + this.width, this.y + this.height / 2 - 20);
+                ctx.lineTo(this.x + this.width + 10, this.y + this.height / 2);
+                ctx.lineTo(this.x + this.width, this.y + this.height / 2 + 20);
+                ctx.stroke();
+                
                 ctx.restore();
             }
             
@@ -1488,16 +1667,16 @@
 
             // --- OBSTACLE DEFINITIONS ---
             if (type === 'MICROFIBER_ARROW') { // Projectile
-                 this.width = 60; this.height = 30; this.y = Math.random() > 0.5 ? spawnY - 130 : spawnY - 40; this.speedX = 6 + Math.random() * 3; this.damage = 25; 
+                 this.width = 60; this.height = 30; this.y = yOverride || (Math.random() > 0.5 ? spawnY - 130 : spawnY - 40); this.speedX = 6 + Math.random() * 3; this.damage = 25; 
             } 
             else if (type === 'ARROW') { // Keeping ARROW for compatibility but it's another microfiber
-                this.width = 40; this.height = 10; this.y = spawnY - 60 - Math.random() * 60; this.speedX = 15; this.damage = 20; 
+                this.width = 40; this.height = 10; this.y = yOverride || (spawnY - 60 - Math.random() * 60); this.speedX = 15; this.damage = 20; 
             }
             else if (type === 'CO2_FLARE') { // Floating Drain
-                this.width = 40; this.height = 40; this.y = spawnY - 80 - (Math.random() * 100); this.damage = 30; 
+                this.width = 40; this.height = 40; this.y = yOverride || (spawnY - 80 - (Math.random() * 100)); this.damage = 30; 
             } 
             else if (type === 'LANDFILL_DRONE') { // Flying Threat
-                this.width = 25; this.height = 15; this.y = spawnY - 150 - (Math.random() * 80); this.speedX = 10 + Math.random() * 5; this.damage = 40; 
+                this.width = 25; this.height = 15; this.y = yOverride || (spawnY - 150 - (Math.random() * 80)); this.speedX = 10 + Math.random() * 5; this.damage = 40; 
             } 
             // Ground Threat: PLASTIC_BALE
             else if (type === 'PLASTIC_BALE') {
@@ -1511,12 +1690,13 @@
             }
             // DRAIN ZONE REVERT: SMOG_ZONE (Air Pollution)
             else if (type === 'SMOG_ZONE') {
-                 this.width = 150; this.height = 80; this.y = spawnY - 150 - (Math.random() * 100); this.damage = 0; // No impact damage, only drain
+                 this.width = 150; this.height = 80; this.y = yOverride || (spawnY - 150 - (Math.random() * 100)); this.damage = 0; // No impact damage, only drain
                  this.isStatic = true;
             }
             else { this.width = 40; this.height = 50; this.y = spawnY - this.height - 5; this.damage = 15; } // STIFF_NYLON_TAG (Ground Default)
             
-            if (!xOverride) this.x = canvas.width + Math.random() * 100;
+            if (xOverride) this.x = xOverride; // Use provided X coordinate (for boss attacks)
+            else this.x = canvas.width + Math.random() * 100; // Standard spawn off screen
             
             this.isMoving = Math.random() < 0.4; this.angle = 0;
             this.initialY = this.y;
@@ -1677,6 +1857,8 @@
         collectibles = [];
         particles = [];
         floatingTexts = [];
+        playerAttacks = []; // Reset player attacks
+        
         score = 0;
         sessionCoins = 0;
         shakeTimer = 0;
@@ -1776,12 +1958,35 @@
         if (type === 'EFFICIENCY') buffs.efficiency = true;
         
         // Temporary Buffs
-        if (type === 'INVULNERABILITY') invulnerableTimer = 600; // 10 seconds at 60 FPS
+        if (type === 'INVULNERABILITY') invulnerableTimer = 180; // Reduced to 3 seconds (3 * 60)
         if (type === 'COIN_DOUBLER') coinDoublerTimer = 900; // 15 seconds at 60 FPS
         
         gameState = 'PLAYING';
         showScreen('none');
         gameLoop();
+    }
+    
+    function updateBossHUD() {
+        if (boss && boss.active) {
+            document.getElementById('boss-hud').style.display = 'flex';
+            document.getElementById('boss-hp-fill').style.width = (boss.hp / boss.maxHp) * 100 + '%';
+        } else {
+            document.getElementById('boss-hud').style.display = 'none';
+        }
+    }
+
+    function playerAttack() {
+        if (gameState === 'PLAYING' && player.attackCooldown <= 0) {
+            player.attackCooldown = 20; // 0.33s cooldown
+            player.isAttacking = true;
+            audio.playSFX('laser');
+            
+            // NEW: Spawn a projectile attack from the player's position
+            playerAttacks.push(new PlayerAttack(
+                player.x + player.width, 
+                player.y + player.height / 2 - 5 // Center the attack
+            ));
+        }
     }
 
     function spawnLogic() {
@@ -1803,16 +2008,15 @@
         }
 
         // Base spawn rate depends on game speed
-        let spawnThreshold = 80 - (gameSpeed * 2); 
+        let spawnThreshold = (80 - (gameSpeed * 2)) / 1.5; // Global 1.5x increase in spawn rate
         
         // Difficulty Tier 4: Once all obstacle types are available (after 3000m)
         if (availableObstacles.length >= 8) {
-             // Capping the overall spawn rate to prevent excessive difficulty spike
-             spawnThreshold = 30 - (gameSpeed * 0.5); 
+             spawnThreshold = (30 - (gameSpeed * 0.5)) / 1.5; // Apply 1.5x increase to Tier 4 base
         }
         
-        // Ensure a minimum gap of 20 frames between major spawns
-        if (spawnThreshold < 20) spawnThreshold = 20; 
+        // Ensure a minimum gap of 20 frames / 1.5 = 13.33 frames between major spawns
+        if (spawnThreshold < 13.33) spawnThreshold = 13.33; 
 
         if (frameCount % Math.floor(spawnThreshold) === 0) {
             const index = Math.floor(Math.random() * availableObstacles.length);
@@ -1924,6 +2128,46 @@
                 }
             }
         }
+        
+        // NEW: Check Player-Boss Collision (Player takes damage if touching the boss body)
+        if (bossBattleActive && boss && boss.active) {
+            const bossPadding = 15;
+            if (player.x + player.width > boss.x + bossPadding && player.x < boss.x + boss.width - bossPadding &&
+                player.y + player.height > boss.y + bossPadding && player.y < boss.y + boss.height - bossPadding) 
+            {
+                 // Player hits boss body - take damage
+                 if (invulnerableTimer <= 0) {
+                    if (player.shieldCount > 0) {
+                        player.shieldCount--; 
+                        invulnerableTimer = 60; // Brief post-hit invulnerability
+                        createParticles(player.x, player.y, 10, player.skin.color); flashScreen(); audio.playSFX('crash'); spawnFloatingText(player.x, player.y - 30, "Shield Lost", "#FFF");
+                    } else {
+                        flashScreen(); audio.playSFX('crash'); energy -= 30; // Direct contact damage
+                        invulnerableTimer = 60; // Brief post-hit invulnerability
+                        createParticles(player.x, player.y, 8, PALETTE.danger); 
+                        spawnFloatingText(player.x, player.y - 30, "-30 Energy", "#E76F51");
+                        if (energy <= 0) endGame('Direct Contact!'); 
+                    }
+                 }
+            }
+
+            // NEW: Check Player Attack Projectile Hit
+            for (let i = playerAttacks.length - 1; i >= 0; i--) {
+                let attack = playerAttacks[i];
+                
+                // Simple rectangular collision check between attack projectile and boss
+                if (attack.x < boss.x + boss.width && attack.x + attack.width > boss.x &&
+                    attack.y < boss.y + boss.height && attack.y + attack.height > boss.y) 
+                {
+                    // Hit!
+                    boss.takeDamage(50); 
+                    attack.active = false;
+                    playerAttacks.splice(i, 1);
+                    createParticles(attack.x, attack.y, 10, '#00FFFF');
+                }
+            }
+        }
+        
         // Collectibles
         const itemPadding = 15;
         for (let i = collectibles.length - 1; i >= 0; i--) {
@@ -1952,13 +2196,21 @@
         let diffSettings = DIFFICULTIES[selectedDifficulty];
         
         // Progression Logic
-        if (gameSpeed < MAX_SPEED) {
+        if (gameSpeed < MAX_SPEED && !bossBattleActive) { // PAUSE speed increase during boss fight
             gameSpeed = Math.min(MAX_SPEED, gameSpeed + diffSettings.progression * TIME_SCALE);
-            score += (gameSpeed * TIME_SCALE * 0.05);
         }
+        score += (gameSpeed * TIME_SCALE * 0.05);
         
+        // NEW: BOSS FIGHT TRIGGER (7000m)
+        if (score >= 7000 && !bossBattleActive && !bossDefeated) {
+             bossBattleActive = true;
+             boss = new Boss();
+             gameSpeed = 8; // Slow down for the boss fight introduction
+             updateBossHUD();
+        }
+
         // Check milestone achievement
-        if (score >= 7000 && !playerData.badges.includes('champion')) unlockBadge('champion');
+        // Champion badge logic is now inside Boss.takeDamage()
         if (score > 20000 && !winTriggered) {
             winTriggered = true;
             unlockBadge('legend');
@@ -1970,8 +2222,8 @@
         if (score >= 1000) unlockBadge('novice');
         if (score >= 5000) unlockBadge('runner');
         
-        // Quiz Trigger Logic
-        if (score >= nextQuizThreshold) {
+        // Quiz Trigger Logic - DISABLED during boss fight
+        if (score >= nextQuizThreshold && !bossBattleActive) {
             nextQuizThreshold += 700; 
             triggerQuiz();
             return; 
@@ -1984,11 +2236,34 @@
         }
         if (energy <= 0) { endGame('Out of Energy'); return; }
 
+        // NEW: Update Boss Logic
+        if (bossBattleActive && boss && boss.active) {
+            boss.update();
+            // Don't call spawnLogic() when boss is active
+        } else {
+            spawnLogic();
+        }
+        
+        // NEW: Player Attacks Update
+        for (let i = playerAttacks.length - 1; i >= 0; i--) {
+            playerAttacks[i].update();
+            if (!playerAttacks[i].active) {
+                playerAttacks.splice(i, 1);
+            }
+        }
+
         player.update();
-        spawnLogic();
-
+        
         drawEnvironment();
-
+        
+        // Draw Boss (If active)
+        if (bossBattleActive && boss && boss.active) {
+            boss.draw(ctx);
+        }
+        
+        // NEW: Draw Player Attacks
+        playerAttacks.forEach(a => a.draw(ctx));
+        
         // Draw gameplay elements
         if (gameState !== 'QUIZ') {
             for (let i = obstacles.length - 1; i >= 0; i--) {
@@ -2012,8 +2287,13 @@
         bar.style.width = Math.max(0, (energy / maxEnergy) * 100) + '%';
         if (energy < 30) bar.style.background = PALETTE.danger; else bar.style.background = `linear-gradient(90deg, #2A9D8F, #2F6F6F)`;
 
-        // Attack button is hidden in endless mode
-        document.getElementById('attack-btn').style.display = 'none';
+        // NEW: Update Boss HUD & Button Visibility
+        updateBossHUD();
+        if (bossBattleActive && boss && boss.active) {
+            document.getElementById('attack-btn').style.display = 'flex';
+        } else {
+            document.getElementById('attack-btn').style.display = 'none';
+        }
 
         frameId = requestAnimationFrame(gameLoop);
     }
@@ -2038,9 +2318,7 @@
     function resetGame() { startGame(); }
     function openShop() { showScreen('shop-screen'); renderShop(); }
     
-    function playerAttack() {
-        // Attack logic is disabled in endless mode
-    }
+    // Attack function is now implemented above to trigger the attack animation/damage
     
     function renderShop() {
         const container = document.getElementById('shop-container'); container.innerHTML = '';
@@ -2057,7 +2335,7 @@
     window.addEventListener('keydown', (e) => {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.vx = 0;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') player.vx = 0;
-        if (e.code === 'KeyF') player.attack();
+        if (e.code === 'KeyF') playerAttack(); // Use F for attack now
 
         if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { 
             e.preventDefault(); 
@@ -2116,7 +2394,7 @@
     
     window.addEventListener('mousedown', (e) => { 
         if(e.target.tagName !== 'BUTTON' && e.target.id !== 'attack-btn' && gameState === 'PLAYING') {
-            player.attack(); 
+            playerAttack(); // Call playerAttack on mouse down
         }
     });
     window.addEventListener('mouseup', (e) => { if(gameState === 'PLAYING') player.cutJump(); });
