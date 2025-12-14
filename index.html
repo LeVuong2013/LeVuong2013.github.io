@@ -13,7 +13,7 @@
             overflow: hidden;
             background-color: #F4F7F2;
             font-family: 'Montserrat', sans-serif;
-            touch-action: none;
+            /* Removed touch-action: none from body to allow scrolling in screens */
             user-select: none;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
@@ -28,6 +28,9 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            /* Kept touch-action: none for the main container to prevent accidental page scroll during gameplay */
+            touch-action: none; 
+            z-index: 1; /* Establish stacking context for z-index hierarchy */
         }
 
         canvas {
@@ -205,19 +208,21 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
-            pointer-events: auto;
+            /* Allow clicks/taps/scrolls on the screen elements */
+            pointer-events: auto; 
             transition: opacity 0.4s, transform 0.4s;
             z-index: 10;
             box-sizing: border-box;
             overflow-y: auto; 
-            touch-action: pan-y;
+            /* Allows vertical scrolling inside the screen overlay */
+            touch-action: pan-y; 
             justify-content: flex-start;
             padding-top: 40px;
             padding-bottom: 40px;
             -webkit-overflow-scrolling: touch;
         }
-
-        .hidden {
+        
+        .screen.hidden {
             opacity: 0;
             pointer-events: none;
             transform: scale(0.95);
@@ -662,6 +667,17 @@
         </div>
     </div>
 
+    <!-- Quiz Feedback Overlay -->
+    <div id="quiz-feedback-screen" class="screen hidden modal-overlay">
+        <div class="info-panel" style="max-width: 300px; text-align: center; max-height: none;">
+            <h1 id="feedback-title" style="font-size: 2.5rem; color: #2F6F6F;">Feedback</h1>
+            <p id="feedback-msg">Message</p>
+            <div class="btn-group" style="flex-direction: row; justify-content: center;">
+                <button id="feedback-continue-btn" class="btn" style="padding: 10px 20px; font-size: 1rem;">Continue</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Reward Overlay -->
     <div id="reward-screen" class="screen hidden" style="z-index: 51; justify-content: center;">
         <h1 style="font-size: 2.5rem; color: #E9C46A;">CORRECT!</h1>
@@ -852,7 +868,9 @@
                 this.playTone(1800, 'sine', 0.2, 0.03, 0.05);
             } 
             else if (type === 'crash') {
-                this.playTone(100, 'sawtooth', 0.3, 0.2);
+                // Modified crash sound for more impact
+                this.playTone(150, 'sawtooth', 0.05, 0.3);
+                this.playTone(50, 'square', 0.3, 0.2, 0.05);
             } 
             else if (type === 'powerup') {
                 this.playTone(523.25, 'sine', 0.2, 0.1, 0);   
@@ -980,7 +998,8 @@
         EASY: { label: "Easy", speed: 9, progression: 0.001, drain: 0.3 }, 
         MEDIUM: { label: "Medium", speed: 11, progression: 0.0015, drain: 0.6 }, 
         HARD: { label: "Hard", speed: 14, progression: 0.002, drain: 0.9 }, 
-        FLOW: { label: "Flow", speed: 18, progression: 0.003, drain: 1.2 }  
+        // UPDATED for easier FLOW mode
+        FLOW: { label: "Flow", speed: 20.0, progression: 0.006, drain: 1.0 }  
     };
     const DIFF_KEYS = ['EASY', 'MEDIUM', 'HARD', 'FLOW'];
     let selectedDifficulty = 'MEDIUM';
@@ -1031,7 +1050,7 @@
     function getEquippedSkin() {
         return SKINS.find(s => s.id === playerData.equippedSkin) || SKINS[0];
     }
-
+    
     // --- GAME CONSTANTS & VARS ---
     const GRAVITY = 0.8;          
     const BASE_JUMP_FORCE = -18.5; 
@@ -1064,6 +1083,131 @@
     let boss = null;
     
     const TIME_SCALE = 1.0; 
+
+    // --- UI & State Utilities (Moved for function availability) ---
+
+    function showScreen(id) { 
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); 
+        if(id !== 'none') document.getElementById(id).classList.remove('hidden'); 
+    }
+
+    function showModal(msg, onConfirm) { 
+        const modal = document.getElementById('custom-modal'); 
+        const msgEl = document.getElementById('modal-msg'); 
+        const actionBtn = document.getElementById('modal-action-btn'); 
+        const closeBtn = document.getElementById('modal-close-btn'); 
+        msgEl.innerText = msg; 
+        modal.classList.remove('hidden'); 
+        if (onConfirm) { 
+            actionBtn.innerText = "Confirm"; 
+            closeBtn.style.display = "inline-block"; 
+            actionBtn.onclick = () => { onConfirm(); modal.classList.add('hidden'); }; 
+        } else { 
+            actionBtn.innerText = "OK"; 
+            closeBtn.style.display = "none"; 
+            actionBtn.onclick = () => { modal.classList.add('hidden'); }; 
+        } 
+        closeBtn.onclick = () => modal.classList.add('hidden'); 
+    }
+
+    function renderShop() {
+        const container = document.getElementById('shop-container'); container.innerHTML = '';
+        SKINS.forEach(skin => {
+            const owned = playerData.ownedSkins.includes(skin.id); const equipped = playerData.equippedSkin === skin.id; const div = document.createElement('div'); div.className = `shop-item ${equipped ? 'active' : ''}`; div.onclick = () => handleShopClick(skin.id);
+            let btnLabel = owned ? (equipped ? 'EQUIPPED' : 'EQUIP') : `${skin.cost} 🪙`; let btnClass = owned ? 'owned-tag' : 'skin-price'; if (equipped) btnClass += ' active-tag'; 
+            div.innerHTML = `<div class="skin-preview" style="background:${skin.color}; border-color:${skin.secondary}"></div><div class="skin-name">${skin.name}</div><div class="skin-perk">${skin.desc}</div><div class="${btnClass}">${btnLabel}</div>`; container.appendChild(div);
+        });
+    }
+
+    function handleShopClick(id) { 
+        const skin = SKINS.find(s => s.id === id); 
+        const owned = playerData.ownedSkins.includes(id); 
+        if (owned) { 
+            playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('click'); 
+        } else { 
+            if (playerData.coins >= skin.cost) { 
+                showModal(`Buy ${skin.name} for ${skin.cost} Coins?`, () => { 
+                    playerData.coins -= skin.cost; playerData.ownedSkins.push(id); playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('powerup'); 
+                }); 
+            } else { 
+                showModal("Not enough coins! Keep running!"); audio.playSFX('click'); 
+            } 
+        } 
+    }
+    
+    function startGame() { 
+        showScreen('none'); 
+        init(); 
+        gameState = 'PLAYING'; 
+        gameLoop(); 
+        audio.playSFX('powerup'); 
+    }
+
+    function endGame(reason) {
+        gameState = 'GAMEOVER'; cancelAnimationFrame(frameId); audio.stopBGM(); audio.playSFX('crash');
+        let earned = Math.floor(score / 10) + sessionCoins; playerData.coins += earned;
+        if (score > highScore) { highScore = score; localStorage.setItem('aether_highscore_v4', highScore); }
+        if (playerData.coins >= 1000) unlockBadge('rich');
+        saveGame();
+        document.getElementById('final-score').innerText = Math.floor(score) + "m"; document.getElementById('game-over-best').innerText = Math.floor(highScore) + "m"; document.getElementById('coins-earned').innerText = "+" + earned + " Coins"; document.getElementById('game-over-msg').innerText = reason; showScreen('game-over-screen');
+    }
+
+    function continueEndless() { gameState = 'PLAYING'; showScreen('none'); gameLoop(); }
+    
+    function resetGame() { startGame(); }
+    
+    function openShop() { showScreen('shop-screen'); renderShop(); }
+    
+    function cycleDifficulty() {
+        let idx = DIFF_KEYS.indexOf(selectedDifficulty);
+        idx = (idx + 1) % DIFF_KEYS.length;
+        selectedDifficulty = DIFF_KEYS[idx];
+        
+        const btn = document.getElementById('diff-btn');
+        btn.innerText = "Difficulty: " + DIFFICULTIES[selectedDifficulty].label;
+        audio.playSFX('click');
+    }
+
+    function applyBuff(type) {
+        audio.playSFX('powerup');
+        
+        // Permanent Buffs (Magnet, Regen, Efficiency)
+        if (type === 'MAGNET') buffs.magnet = true;
+        if (type === 'SHIELD_REGEN') {
+            buffs.shieldRegen = true;
+            if (player.shieldCount < player.maxShields) {
+                player.shieldCount++;
+                createParticles(player.x, player.y, 10, '#FFF');
+            }
+        }
+        if (type === 'EFFICIENCY') buffs.efficiency = true;
+        
+        // Temporary Buffs
+        if (type === 'INVULNERABILITY') invulnerableTimer = 180; // 3 seconds at 60 FPS
+        if (type === 'COIN_DOUBLER') coinDoublerTimer = 900; // 15 seconds at 60 FPS
+        
+        gameState = 'PLAYING';
+        showScreen('none');
+        gameLoop();
+    }
+
+    function handleQuizAnswer(isCorrect) {
+        showScreen('none'); // Hide quiz screen
+        if (isCorrect) {
+            showFeedbackScreen("CORRECT!", "#2A9D8F", () => {
+                sessionCoins += 50;
+                showScreen('reward-screen');
+            });
+        } else {
+            showFeedbackScreen("INCORRECT!", "#E76F51", () => {
+                gameState = 'PLAYING';
+                gameLoop();
+            });
+        }
+    }
+    
+    // --- End UI & State Utilities ---
+
 
     class FloatingText {
         constructor(x, y, text, color) {
@@ -1186,6 +1330,7 @@
                     ctx.shadowColor = '#A8C686';
                     ctx.shadowBlur = 8;
                     ctx.fillStyle = '#A8C686'; 
+                    // FIX: Ensure fillRect has 4 arguments (x, y, width, height)
                     ctx.fillRect(s.x, s.y, s.width + 2, 3);
                     ctx.restore();
                 }
@@ -1209,6 +1354,7 @@
             ctx.shadowColor = '#A8C686';
             ctx.shadowBlur = 5;
             ctx.fillStyle = '#A8C686';
+            // FIX: Ensure fillRect has 4 arguments (x, y, width, height)
             ctx.fillRect(this.x, this.y, this.width, 6);
             ctx.restore();
         }
@@ -1517,13 +1663,13 @@
                  this.width = 150; this.height = 80; this.y = spawnY - 150 - (Math.random() * 100); this.damage = 0; // No impact damage, only drain
                  this.isStatic = true;
             }
-            // NEW AERIAL THREAT: WILDFIRE EMBER
+            // UPDATED: WILDFIRE EMBER - Height Variance Increased
             else if (type === 'WILDFIRE_EMBER') { 
                  this.width = 80; this.height = 30; // Increased size (BIGGER)
                  
-                 // Spawn slightly higher up, between 35% and 55% of screen height
-                 const spawnCenter = canvas.height * 0.45; // Shifted center slightly higher (was 0.5)
-                 const variance = canvas.height * 0.2; 
+                 // Increased variance (40% of screen height) for wide-ranging spawns
+                 const spawnCenter = canvas.height * 0.45; 
+                 const variance = canvas.height * 0.4; 
                  this.y = yOverride || (spawnCenter + (Math.random() - 0.5) * variance); 
 
                  // REDUCED SPEED: from 15 + Math.random() * 5 to 12 + Math.random() * 3
@@ -1540,7 +1686,9 @@
             this.points = []; let numPoints = 6; for(let i=0; i<numPoints; i++) { let angle = (i/numPoints) * Math.PI * 2; let r = 20 + Math.random() * 10; this.points.push({x: Math.cos(angle) * r, y: Math.sin(angle) * r}); }
         }
         update() {
-            this.x -= (gameSpeed + this.speedX) * TIME_SCALE;
+            // UPDATED: Apply 1.15x speed multiplier if in FLOW mode (Easier setting)
+            let flowMultiplier = (selectedDifficulty === 'FLOW') ? 1.15 : 1.0;
+            this.x -= (gameSpeed + this.speedX) * TIME_SCALE * flowMultiplier;
             
             // PROJECTILE movement
             if (['MICROFIBER_ARROW', 'ARROW', 'PLASTIC_BOTTLE'].includes(this.type)) { 
@@ -1561,7 +1709,22 @@
                  this.angle += 0.3 * TIME_SCALE;
             }
             
-            for (let p of terrain.platforms) { if (this.x < p.x + p.width - 5 && this.x + this.width > p.x + 5 && this.y < p.y + p.height - 5 && this.y + this.height > p.y + 5) this.markedForDeletion = true; }
+            // --- PLATFORM COLLISION DESTRUCTION EFFECT ---
+            for (let p of terrain.platforms) { 
+                if (!this.markedForDeletion && 
+                    this.x < p.x + p.width - 5 && 
+                    this.x + this.width > p.x + 5 && 
+                    this.y < p.y + p.height - 5 && 
+                    this.y + this.height > p.y + 5) {
+                    
+                    // Collision occurred! Trigger destruction effect.
+                    createParticles(this.x + this.width / 2, this.y + this.height / 2, 15, PALETTE.danger);
+                    audio.playSFX('crash'); // Crash sound for destruction
+                    spawnFloatingText(this.x + this.width / 2, this.y - 10, "Deflected", "#ccc");
+                    this.markedForDeletion = true; 
+                    break; // Stop checking platforms once hit
+                }
+            }
         }
         draw() {
             ctx.save();
@@ -1765,18 +1928,38 @@
         shakeTimer = 10; 
     }
     
-    // --- DIFFICULTY SYSTEM ---
-    function cycleDifficulty() {
-        let idx = DIFF_KEYS.indexOf(selectedDifficulty);
-        idx = (idx + 1) % DIFF_KEYS.length;
-        selectedDifficulty = DIFF_KEYS[idx];
+    // --- QUIZ LOGIC ---
+
+    function showFeedbackScreen(title, color, onContinue) {
+        const screen = document.getElementById('quiz-feedback-screen');
+        const titleEl = document.getElementById('feedback-title');
+        const msgEl = document.getElementById('feedback-msg');
+        const continueBtn = document.getElementById('feedback-continue-btn');
+
+        titleEl.innerText = title;
+        titleEl.style.color = color;
+        titleEl.style.textShadow = `4px 4px 0px ${color}30`;
         
-        const btn = document.getElementById('diff-btn');
-        btn.innerText = "Difficulty: " + DIFFICULTIES[selectedDifficulty].label;
+        if (title === "CORRECT!") {
+            msgEl.innerHTML = "You earned <strong>+50 Coins</strong>! Continue to choose your Powerup.";
+            continueBtn.classList.remove('btn-secondary');
+            continueBtn.classList.add('btn-shop');
+            audio.playSFX('powerup');
+        } else {
+            msgEl.innerHTML = "That was **Incorrect**. Back to the run.";
+            continueBtn.classList.remove('btn-shop');
+            continueBtn.classList.add('btn-secondary');
+        }
+
+        continueBtn.onclick = () => {
+            showScreen('none'); // Hide feedback screen
+            onContinue();
+        };
+
+        showScreen('quiz-feedback-screen');
         audio.playSFX('click');
     }
 
-    // --- QUIZ LOGIC (Unchanged) ---
     function triggerQuiz() {
         gameState = 'QUIZ';
         const qData = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
@@ -1796,40 +1979,6 @@
         showScreen('quiz-screen');
     }
 
-    function handleQuizAnswer(isCorrect) {
-        if (isCorrect) {
-            sessionCoins += 50;
-            audio.playSFX('powerup');
-            showScreen('reward-screen');
-        } else {
-            gameState = 'PLAYING';
-            showScreen('none');
-            gameLoop();
-        }
-    }
-
-    function applyBuff(type) {
-        audio.playSFX('powerup');
-        
-        // Permanent Buffs (Magnet, Regen, Efficiency)
-        if (type === 'MAGNET') buffs.magnet = true;
-        if (type === 'SHIELD_REGEN') {
-            buffs.shieldRegen = true;
-            if (player.shieldCount < player.maxShields) {
-                player.shieldCount++;
-                createParticles(player.x, player.y, 10, '#FFF');
-            }
-        }
-        if (type === 'EFFICIENCY') buffs.efficiency = true;
-        
-        // Temporary Buffs
-        if (type === 'INVULNERABILITY') invulnerableTimer = 180; // 3 seconds at 60 FPS
-        if (type === 'COIN_DOUBLER') coinDoublerTimer = 900; // 15 seconds at 60 FPS
-        
-        gameState = 'PLAYING';
-        showScreen('none');
-        gameLoop();
-    }
 
     function spawnLogic() {
         if (bossBattleActive) return; 
@@ -1858,12 +2007,25 @@
              spawnThreshold = 30 - (gameSpeed * 0.5); 
         }
         
+        // UPDATED: Apply 1.25x spawn rate increase if in FLOW mode (Easier setting)
+        if (selectedDifficulty === 'FLOW') {
+            spawnThreshold /= 1.25;
+        }
+
         // Ensure a minimum gap of 20 frames between major spawns
         if (spawnThreshold < 20) spawnThreshold = 20; 
 
         if (frameCount % Math.floor(spawnThreshold) === 0) {
-            const index = Math.floor(Math.random() * availableObstacles.length);
-            const type = availableObstacles[index];
+            
+            // New: Increase Wildfire Ember Frequency (High priority)
+            let finalObstacles = [...availableObstacles];
+            if (finalObstacles.includes('WILDFIRE_EMBER')) {
+                // Duplicate ember to increase 3x chance (2 extra slots)
+                finalObstacles.push('WILDFIRE_EMBER', 'WILDFIRE_EMBER');
+            }
+
+            const index = Math.floor(Math.random() * finalObstacles.length);
+            const type = finalObstacles[index];
             
             obstacles.push(new Obstacle(type));
         }
@@ -2065,42 +2227,69 @@
         frameId = requestAnimationFrame(gameLoop);
     }
 
-    // --- State Management ---
-    function startGame() { 
-        showScreen('none'); 
-        init(); 
-        gameState = 'PLAYING'; 
-        gameLoop(); 
-        audio.playSFX('powerup'); 
-    }
-    function endGame(reason) {
-        gameState = 'GAMEOVER'; cancelAnimationFrame(frameId); audio.stopBGM(); audio.playSFX('crash');
-        let earned = Math.floor(score / 10) + sessionCoins; playerData.coins += earned;
-        if (score > highScore) { highScore = score; localStorage.setItem('aether_highscore_v4', highScore); }
-        if (playerData.coins >= 1000) unlockBadge('rich');
-        saveGame();
-        document.getElementById('final-score').innerText = Math.floor(score) + "m"; document.getElementById('game-over-best').innerText = Math.floor(highScore) + "m"; document.getElementById('coins-earned').innerText = "+" + earned + " Coins"; document.getElementById('game-over-msg').innerText = reason; showScreen('game-over-screen');
-    }
-    function continueEndless() { gameState = 'PLAYING'; showScreen('none'); gameLoop(); }
-    function resetGame() { startGame(); }
-    function openShop() { showScreen('shop-screen'); renderShop(); }
+    // --- Mouse and Touch Controls ---
     
-    function playerAttack() {
-        // Attack logic is disabled in endless mode
-    }
+    // MOUSE DOWN: Initiate jump (replacing player.attack())
+    window.addEventListener('mousedown', (e) => { 
+        // Only trigger if outside of UI buttons and game is playing
+        if(e.target.tagName !== 'BUTTON' && !e.target.closest('#ui-layer') && gameState === 'PLAYING') {
+            player.jump(); 
+        }
+    });
     
-    function renderShop() {
-        const container = document.getElementById('shop-container'); container.innerHTML = '';
-        SKINS.forEach(skin => {
-            const owned = playerData.ownedSkins.includes(skin.id); const equipped = playerData.equippedSkin === skin.id; const div = document.createElement('div'); div.className = `shop-item ${equipped ? 'active' : ''}`; div.onclick = () => handleShopClick(skin.id);
-            let btnLabel = owned ? (equipped ? 'EQUIPPED' : 'EQUIP') : `${skin.cost} 🪙`; let btnClass = owned ? 'owned-tag' : 'skin-price'; if (equipped) btnClass += ' active-tag'; 
-            div.innerHTML = `<div class="skin-preview" style="background:${skin.color}; border-color:${skin.secondary}"></div><div class="skin-name">${skin.name}</div><div class="skin-perk">${skin.desc}</div><div class="${btnClass}">${btnLabel}</div>`; container.appendChild(div);
-        });
-    }
-    function showModal(msg, onConfirm) { const modal = document.getElementById('custom-modal'); const msgEl = document.getElementById('modal-msg'); const actionBtn = document.getElementById('modal-action-btn'); const closeBtn = document.getElementById('modal-close-btn'); msgEl.innerText = msg; modal.classList.remove('hidden'); if (onConfirm) { actionBtn.innerText = "Confirm"; closeBtn.style.display = "inline-block"; actionBtn.onclick = () => { onConfirm(); modal.classList.add('hidden'); }; } else { actionBtn.innerText = "OK"; closeBtn.style.display = "none"; actionBtn.onclick = () => { modal.classList.add('hidden'); }; } closeBtn.onclick = () => modal.classList.add('hidden'); }
-    function handleShopClick(id) { const skin = SKINS.find(s => s.id === id); const owned = playerData.ownedSkins.includes(id); if (owned) { playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('click'); } else { if (playerData.coins >= skin.cost) { showModal(`Buy ${skin.name} for ${skin.cost} Coins?`, () => { playerData.coins -= skin.cost; playerData.ownedSkins.push(id); playerData.equippedSkin = id; saveGame(); renderShop(); audio.playSFX('powerup'); }); } else { showModal("Not enough coins! Keep running!"); audio.playSFX('click'); } } }
-    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden')); if(id !== 'none') document.getElementById(id).classList.remove('hidden'); }
+    // MOUSE UP: Allow cut-jump mechanic if the jump was initiated by holding the mouse down
+    window.addEventListener('mouseup', (e) => { 
+        if(gameState === 'PLAYING') player.cutJump(); 
+    });
 
+    // TOUCH START: Refined logic for mobile usability
+    let touchStartY = undefined;
+
+    window.addEventListener('touchstart', (e) => {
+        // 1. Check if the target is within a non-hidden UI screen or is a UI element.
+        // This ensures scrolling and button taps work correctly on the menus.
+        const isTargetInUIScreen = e.target.closest('.screen:not(.hidden)');
+        const isTargetClickableElement = e.target.closest('button, a, input');
+
+        // 2. Check if the touch should be interpreted as game input (PLAYING and not on UI).
+        const isGameInput = gameState === 'PLAYING' && !isTargetInUIScreen && !isTargetClickableElement;
+
+        if (isGameInput) {
+            e.preventDefault(); // Only prevent default behavior (like scrolling/zooming) if it's a game input
+            touchStartY = e.changedTouches[0].clientY;
+        } else {
+             // If not game input, let default event proceed (allowing button clicks/scrolling)
+             touchStartY = undefined;
+        }
+    }, {passive: false});
+    
+    // TOUCH END: Calculate swipe direction. 
+    window.addEventListener('touchend', (e) => {
+        if (gameState !== 'PLAYING' || touchStartY === undefined) {
+            // Ignore if not playing or if touch start was ignored (i.e., on a UI button/screen)
+            return;
+        }
+
+        // If touch start was processed as game input, we must prevent default here too.
+        e.preventDefault(); 
+
+        let deltaY = e.changedTouches[0].clientY - touchStartY;
+        
+        // Handle jump cut/coyote time logic regardless of swipe
+        player.cutJump();
+        
+        if (deltaY > 30) { 
+            // Downward swipe (Dive)
+            player.dive(); 
+        } 
+        else { 
+            // Tap or upward swipe (Jump)
+            player.jump(); 
+        }
+        
+        touchStartY = undefined; // Reset
+    }, {passive: false});
+    
     window.addEventListener('keydown', (e) => {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') player.vx = 0;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') player.vx = 0;
@@ -2123,50 +2312,6 @@
         }
     });
     
-    // Touch controls
-    window.addEventListener('touchstart', (e) => {
-        // Crucial check: If the touch target is part of a UI button, abort game controls.
-        if (e.target.closest('button') || e.target.id === 'attack-btn') {
-            return;
-        }
-
-        if (gameState !== 'PLAYING') return;
-        e.preventDefault(); 
-        window.touchStartY = e.changedTouches[0].clientY;
-        
-    }, {passive: false});
-    
-    window.addEventListener('touchend', (e) => {
-        // Crucial check: If the touch target is part of a UI button, abort game controls.
-        if (e.target.closest('button') || e.target.id === 'attack-btn') {
-            return;
-        }
-
-        e.preventDefault();
-        
-        if (gameState !== 'PLAYING') return;
-        
-        let deltaY = e.changedTouches[0].clientY - window.touchStartY;
-        
-        // Handle jump cut/coyote time logic regardless of swipe
-        if (gameState === 'PLAYING') player.cutJump();
-        
-        if (deltaY > 30) { 
-            // Downward swipe (Dive)
-            if (gameState === 'PLAYING') player.dive(); 
-        } 
-        else { 
-            // Tap or upward swipe (Jump)
-            if (gameState === 'PLAYING') player.jump(); 
-        }
-    });
-    
-    window.addEventListener('mousedown', (e) => { 
-        if(e.target.tagName !== 'BUTTON' && e.target.id !== 'attack-btn' && gameState === 'PLAYING') {
-            player.attack(); 
-        }
-    });
-    window.addEventListener('mouseup', (e) => { if(gameState === 'PLAYING') player.cutJump(); });
 
     resize();
     updateCoinDisplays();
